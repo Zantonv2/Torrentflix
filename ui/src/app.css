@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --netflix-black: #141414;
+  --netflix-dark: #181818;
+  --netflix-gray: #333333;
+  --netflix-light: #757575;
+  --netflix-red: #E50914;
+  --netflix-white: #FFFFFF;
+}
+
+body {
+  background-color: var(--netflix-black);
+  color: var(--netflix-white);
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Netflix card hover effects */
+.netflix-card {
+  @apply relative overflow-hidden rounded-md transition-all duration-300 ease-in-out;
+}
+
+.netflix-card:hover {
+  @apply transform scale-105 z-10;
+}
+
+.netflix-card:hover .card-overlay {
+  @apply opacity-100;
+}
+
+.card-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 transition-opacity duration-300;
+}
+
+/* Quality badges */
+.quality-badge {
+  @apply absolute top-2 right-2 px-2 py-1 text-xs font-semibold rounded-sm;
+}
+
+.quality-4k {
+  @apply bg-blue-600 text-white;
+}
+
+.quality-1080p {
+  @apply bg-green-600 text-white;
+}
+
+.quality-720p {
+  @apply bg-yellow-600 text-white;
+}
+
+.quality-default {
+  @apply bg-gray-600 text-white;
+}
+
+/* Search bar */
+.netflix-search {
+  @apply bg-netflix-dark border-netflix-gray text-netflix-white placeholder-netflix-light;
+}
+
+.netflix-search:focus {
+  @apply border-netflix-red outline-none ring-1 ring-netflix-red;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-netflix-gray;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--netflix-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--netflix-gray);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--netflix-light);
+}

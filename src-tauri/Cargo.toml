@@ -1,0 +1,33 @@
+[package]
+name = "moviedownloader"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
+sqlx.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+futures.workspace = true
+
+# Tauri dependencies
+tauri = { workspace = true, features = [] }
+tauri-plugin-window-state = "2.0"
+
+# Engine dependency
+engine = { path = "../engine" }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

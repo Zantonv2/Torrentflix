@@ -1,0 +1,23 @@
+{
+  "name": "torrentflix",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "ui:dev": "cd ui && npm run dev",
+    "ui:build": "cd ui && npm run build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "concurrently \"npm run ui:dev\" \"wait-on http://localhost:5173 && npm run tauri:dev\"",
+    "build": "npm run ui:build && npm run tauri:build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.4",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "workspaces": [
+    "ui"
+  ]
+}

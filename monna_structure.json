@@ -1,0 +1,33 @@
+{
+  "main_page": {
+    "movies": [],
+    "pagination": {},
+    "selectors": {}
+  },
+  "movie_page": {
+    "title": "Племя чужих (2025) скачать торрент",
+    "description": null,
+    "torrents": [
+      {
+        "url": "https://torrent.elistima.top/",
+        "text": "торрент фильмы",
+        "quality": null,
+        "size": null,
+        "type": "torrent"
+      }
+    ],
+    "selectors": {
+      "title": "h1",
+      "torrent_links": "a[href*=\"torrent\"]"
+    }
+  },
+  "search_page": {
+    "movies": [],
+    "selectors": {}
+  },
+  "urls": {
+    "base": "https://tv.monna2.top",
+    "search": "https://tv.monna2.top/index.php?do=search",
+    "pagination": "https://tv.monna2.top/page/{number}/"
+  }
+}
