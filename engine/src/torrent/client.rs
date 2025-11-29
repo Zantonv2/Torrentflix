@@ -2,7 +2,7 @@
 // TODO: Implement actual qBittorrent client integration
 
 use anyhow::Result;
-use crate::models::{TorrentResult, DownloadStatus};
+use crate::models::DownloadStatus;
 
 pub struct TorrentClient {
     url: String,

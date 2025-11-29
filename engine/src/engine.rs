@@ -2,8 +2,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use tracing::{debug, info, warn, error};
 
-use crate::indexers::{IndexerManager, IndexerRegistry, YtsIndexer, MonnaIndexer};
-use crate::indexers::traits::{IndexerConfig, SearchQuery};
+use crate::indexers::{IndexerManager, IndexerRegistry, MonnaIndexer};
+use crate::indexers::traits::SearchQuery;
 use crate::models::MediaType;
 use crate::normalize::Normalizer;
 use crate::models::{TorrentResult, MediaSearchResult, EnrichedMedia};
@@ -84,26 +84,101 @@ impl Engine {
     }
 
     async fn register_default_indexers(&self) -> Result<()> {
-        // Register YTS indexer
-        let yts_config = IndexerConfig::default();
-        let yts_indexer = Arc::new(YtsIndexer::new(yts_config));
-        
-        if let Err(e) = self.indexer_manager.registry().register(yts_indexer) {
-            warn!("Failed to register YTS indexer: {}", e);
-        } else {
-            info!("Registered YTS indexer");
-        }
-
-        // Register Monna indexer
+        // Register Monna2 indexer as primary
         let monna_indexer = Arc::new(MonnaIndexer::new());
         
         if let Err(e) = self.indexer_manager.registry().register(monna_indexer) {
-            warn!("Failed to register Monna indexer: {}", e);
+            warn!("Failed to register Monna2 indexer: {}", e);
         } else {
-            info!("Registered Monna indexer");
+            info!("Registered Monna2 indexer as primary");
         }
 
         Ok(())
+    }
+
+    /// Get feed of recent movies from primary indexer
+    pub async fn get_feed(&self) -> Result<Vec<MediaSearchResult>> {
+        eprintln!("🎬 Engine: get_feed() called");
+        info!("🎬 Engine: Fetching movie feed from primary indexer");
+        
+        // Get the primary indexer (Monna2)
+        let indexers = self.indexer_manager.registry().get_all()?;
+        if let Some(primary_indexer) = indexers.first() {
+            eprintln!("🔍 Engine: Found primary indexer: {}", primary_indexer.name());
+            info!("🔍 Engine: Using primary indexer: {}", primary_indexer.name());
+            
+            // Try to get feed from primary indexer
+            let feed_results = if primary_indexer.name() == "monna" {
+                eprintln!("🎬 Engine: Calling Monna2 get_feed() method");
+                info!("🎬 Engine: Calling Monna2 get_feed() method");
+                primary_indexer.get_feed().await?
+            } else {
+                eprintln!("⚠️ Engine: Non-Monna indexer, falling back to search");
+                info!("⚠️ Engine: Non-Monna indexer, falling back to search");
+                let search_query = SearchQuery::new("2024".to_string())
+                    .with_max_results(20);
+                
+                self.indexer_manager.search_all(&search_query).await?
+            };
+            
+            eprintln!("📊 Engine: Got {} raw results from indexer", feed_results.len());
+            info!("📊 Engine: Got {} raw results from indexer", feed_results.len());
+            
+            // Normalize the feed results
+            let mut normalized_results = Vec::new();
+            
+            for torrent_result in feed_results {
+                eprintln!("🔄 Engine: Normalizing: {}", torrent_result.title);
+                info!("🔄 Engine: Normalizing: {}", torrent_result.title);
+                match self.normalizer.normalize(&torrent_result) {
+                    Ok(parsed_media) => {
+                        eprintln!("✅ Engine: Normalized successfully: {} (year: {:?})", parsed_media.title, parsed_media.year);
+                        debug!("✅ Engine: Normalized successfully: {}", parsed_media.title);
+                        // Create enriched media (without external metadata for feed)
+                        let mut enriched = EnrichedMedia::new(parsed_media);
+                        
+                        // Preserve metadata from TorrentResult (poster_url, description, cast, runtime, genres)
+                        if let Some(poster_url) = torrent_result.poster_url.clone() {
+                            enriched.poster_url = Some(poster_url);
+                        }
+                        if let Some(description) = torrent_result.description.clone() {
+                            enriched.overview = Some(description);
+                        }
+                        if !torrent_result.cast.is_empty() {
+                            enriched.cast = torrent_result.cast.clone();
+                            eprintln!("👥 Engine: Preserving {} cast members in EnrichedMedia", enriched.cast.len());
+                        }
+                        if let Some(runtime) = torrent_result.runtime_minutes {
+                            enriched.runtime_minutes = Some(runtime);
+                        }
+                        if !torrent_result.genres.is_empty() {
+                            enriched.genres = torrent_result.genres.clone();
+                            eprintln!("🎭 Engine: Preserving {} genres in EnrichedMedia", enriched.genres.len());
+                        }
+                        
+                        // Create media search result
+                        let mut media_result = MediaSearchResult::new(enriched);
+                        media_result.torrent_results = vec![torrent_result.clone()];
+                        media_result.best_quality = Some(torrent_result);
+                        
+                        normalized_results.push(media_result);
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Engine: Failed to normalize '{}': {}", torrent_result.title, e);
+                        warn!("❌ Engine: Failed to normalize '{}': {}", torrent_result.title, e);
+                        warn!("Failed to normalize feed item '{}': {}", torrent_result.title, e);
+                    }
+                }
+            }
+            
+            eprintln!("🎉 Engine: Successfully normalized {} movies for UI", normalized_results.len());
+            info!("Feed normalization completed: {} results", normalized_results.len());
+            Ok(normalized_results)
+        } else {
+            eprintln!("❌ Engine: No indexers available");
+            warn!("No indexers available for feed");
+            Ok(Vec::new())
+        }
     }
 
     /// Search for media across all indexers and normalize results
@@ -180,7 +255,36 @@ impl Engine {
                 // Only include results matching the requested media type
                 if parsed_media.media_type == media_type {
                     // Enrich with metadata from TMDb
-                    let enriched = self.enrich_with_metadata(parsed_media).await?;
+                    let mut enriched = self.enrich_with_metadata(parsed_media).await?;
+                    
+                    // Preserve metadata from TorrentResult (poster_url, description, cast, runtime, genres)
+                    // Only override if TMDB didn't provide it
+                    if enriched.poster_url.is_none() {
+                        enriched.poster_url = torrent_result.poster_url.clone();
+                    }
+                    if enriched.overview.is_none() {
+                        enriched.overview = torrent_result.description.clone();
+                    }
+                    if enriched.cast.is_empty() && !torrent_result.cast.is_empty() {
+                        enriched.cast = torrent_result.cast.clone();
+                    }
+                    if enriched.runtime_minutes.is_none() {
+                        enriched.runtime_minutes = torrent_result.runtime_minutes;
+                    }
+                    // Merge genres: prefer TMDB, but add indexer genres if not present
+                    if enriched.genres.is_empty() && !torrent_result.genres.is_empty() {
+                        enriched.genres = torrent_result.genres.clone();
+                    } else if !torrent_result.genres.is_empty() {
+                        // Merge unique genres from both sources
+                        let mut merged = enriched.genres.clone();
+                        for genre in &torrent_result.genres {
+                            if !merged.contains(genre) {
+                                merged.push(genre.clone());
+                            }
+                        }
+                        enriched.genres = merged;
+                    }
+                    
                     let mut media_result = MediaSearchResult::new(enriched);
                     media_result.torrent_results = vec![torrent_result.clone()];
                     media_result.best_quality = Some(torrent_result);
@@ -399,7 +503,7 @@ mod tests {
 
         let results = engine.test_components().await.unwrap();
         
-        // Should have at least one working indexer (YTS)
+        // Should have at least one working indexer (Monna2)
         assert!(results.working_indexers > 0);
         assert!(results.normalizer_working);
     }

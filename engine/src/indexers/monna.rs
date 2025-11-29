@@ -94,6 +94,7 @@ pub struct MonnaMetadata {
     pub poster_url: Option<String>,
     pub kinopoisk_id: Option<String>,
     pub kinopoisk_url: Option<String>,
+    pub is_series: bool, // Flag to indicate if this is a series (had "сериал" in title)
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +102,67 @@ pub struct MonnaIndexer {
     client: Client,
     base_url: String,
     config: IndexerConfig,
+}
+
+/// Normalize title: remove "сериал" prefix/suffix, apply title case if all caps
+/// Returns (normalized_title, is_series)
+fn normalize_title(title: &str) -> (String, bool) {
+    let mut normalized = title.trim().to_string();
+    let mut is_series = false;
+    
+    // Check for "сериал" (case-insensitive) and remove it
+    let title_lower = normalized.to_lowercase();
+    if title_lower.contains("сериал") {
+        is_series = true;
+        // Remove "сериал" from various positions using regex
+        normalized = regex::Regex::new(r"(?i)\s*сериал\s*")
+            .unwrap()
+            .replace_all(&normalized, " ")
+            .to_string();
+        // Clean up multiple spaces
+        normalized = regex::Regex::new(r"\s+")
+            .unwrap()
+            .replace_all(&normalized, " ")
+            .to_string();
+        normalized = normalized.trim().to_string();
+    }
+    
+    // Apply title case if the title is all caps
+    if normalized == normalized.to_uppercase() && normalized.chars().any(|c| c.is_alphabetic()) {
+        normalized = to_title_case(&normalized);
+    }
+    
+    (normalized.trim().to_string(), is_series)
+}
+
+/// Convert text to title case (first letter uppercase, rest lowercase)
+/// Handles both Latin and Cyrillic characters
+fn to_title_case(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+    
+    let chars: Vec<char> = text.chars().collect();
+    let mut result = String::with_capacity(text.len());
+    let mut capitalize_next = true;
+    
+    for ch in chars.iter() {
+        if capitalize_next {
+            // Convert to uppercase (handles both Latin and Cyrillic)
+            result.push(ch.to_uppercase().next().unwrap_or(*ch));
+            capitalize_next = false;
+        } else {
+            // Convert to lowercase
+            result.push(ch.to_lowercase().next().unwrap_or(*ch));
+        }
+        
+        // Next char should be capitalized after spaces, hyphens, etc.
+        if ch.is_whitespace() || *ch == '-' || *ch == '/' {
+            capitalize_next = true;
+        }
+    }
+    
+    result
 }
 
 /// Filter out non-genre text from genre list
@@ -152,6 +214,7 @@ fn filter_valid_genres(genres: Vec<String>) -> Vec<String> {
             }
             true
         })
+        .map(|g| to_title_case(&g)) // Convert to title case
         .take(5) // Max 5 genres
         .collect()
 }
@@ -326,7 +389,14 @@ impl MonnaIndexer {
                         );
                         
                         // Store all metadata from MonnaIndexer
-                        torrent_result.category = Some(category.to_string());
+                        // Use is_series flag from metadata (detected from "сериал" in title)
+                        // or fall back to URL category
+                        let is_series = metadata.is_series || category == "series";
+                        torrent_result.category = if is_series {
+                            Some("series".to_string())
+                        } else {
+                            Some(category.to_string())
+                        };
                         torrent_result.poster_url = metadata.poster_url.clone();
                         torrent_result.description = metadata.description.clone();
                         torrent_result.cast = metadata.cast.clone();
@@ -374,7 +444,13 @@ impl MonnaIndexer {
         if let Some(h1) = document.select(&H1_SELECTOR).next() {
             let title = h1.text().collect::<String>().trim().to_string();
             // Remove "скачать торрент" suffix if present
-            metadata.title = title.replace("скачать торрент", "").trim().to_string();
+            let cleaned_title = title.replace("скачать торрент", "").trim().to_string();
+            // Normalize title (remove "сериал", apply title case if all caps)
+            let (normalized_title, is_series_from_title) = normalize_title(&cleaned_title);
+            metadata.title = normalized_title;
+            metadata.is_series = is_series_from_title;
+            // The title normalization already removed "сериал" from the display title
+            // but we keep the is_series flag to distinguish shows from movies
         }
         
         // Extract metadata from fullstory div
@@ -442,7 +518,12 @@ impl MonnaIndexer {
             // Extract cast
             if let Some(cast_match) = CAST_REGEX.captures(&text) {
                 let cast_str = cast_match.get(1).unwrap().as_str().trim();
-                metadata.cast = cast_str.split(',').map(|c| c.trim().to_string()).take(10).collect();
+                metadata.cast = cast_str.split(',')
+                    .map(|c| c.trim())
+                    .filter(|c| !c.is_empty())
+                    .map(|c| to_title_case(c))
+                    .take(10)
+                    .collect();
             }
             
             // Extract runtime (supports both "Продолжительность:" and "ВРЕМЯ:")
@@ -583,7 +664,13 @@ impl MonnaIndexer {
         if let Some(h1) = document.select(&H1_SELECTOR).next() {
             let title = h1.text().collect::<String>().trim().to_string();
             // Remove "скачать торрент" suffix if present
-            metadata.title = title.replace("скачать торрент", "").trim().to_string();
+            let cleaned_title = title.replace("скачать торрент", "").trim().to_string();
+            // Normalize title (remove "сериал", apply title case if all caps)
+            let (normalized_title, is_series_from_title) = normalize_title(&cleaned_title);
+            metadata.title = normalized_title;
+            metadata.is_series = is_series_from_title;
+            // The title normalization already removed "сериал" from the display title
+            // but we keep the is_series flag to distinguish shows from movies
         }
         
         // Extract metadata from fullstory div
@@ -615,7 +702,12 @@ impl MonnaIndexer {
             // Extract cast
             if let Some(cast_match) = CAST_REGEX.captures(&text) {
                 let cast_str = cast_match.get(1).unwrap().as_str().trim();
-                metadata.cast = cast_str.split(',').map(|c| c.trim().to_string()).take(10).collect();
+                metadata.cast = cast_str.split(',')
+                    .map(|c| c.trim())
+                    .filter(|c| !c.is_empty())
+                    .map(|c| to_title_case(c))
+                    .take(10)
+                    .collect();
             }
             
             // Extract runtime (supports both "Продолжительность:" and "ВРЕМЯ:")

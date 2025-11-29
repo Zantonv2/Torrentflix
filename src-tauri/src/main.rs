@@ -23,8 +23,10 @@ async fn main() {
         .manage(engine)
         .invoke_handler(tauri::generate_handler![
             commands::search_movies,
+            commands::get_feed,
             commands::get_magnet_link,
-            commands::get_engine_status
+            commands::get_engine_status,
+            commands::test_connection
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

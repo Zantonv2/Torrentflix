@@ -14,6 +14,10 @@ pub struct TorrentResult {
     pub category: Option<String>, // movie, series, etc.
     pub tracker: Option<String>,
     pub poster_url: Option<String>, // URL to movie poster image
+    pub description: Option<String>, // Movie description/overview
+    pub cast: Vec<String>, // Cast members
+    pub runtime_minutes: Option<u32>, // Duration in minutes
+    pub genres: Vec<String>, // Movie genres
 }
 
 impl TorrentResult {
@@ -37,6 +41,10 @@ impl TorrentResult {
             category: None,
             tracker: None,
             poster_url: None,
+            description: None,
+            cast: Vec::new(),
+            runtime_minutes: None,
+            genres: Vec::new(),
         }
     }
 

@@ -6,10 +6,14 @@ export interface UiSearchResult {
   title: string;
   year?: number;
   poster_url?: string;
+  backdrop_url?: string;
   quality_badge: string;
   rating?: number;
   runtime_minutes?: number;
   category?: string; // Movie genre/category
+  description?: string; // Movie description/overview
+  cast?: string[]; // Cast members
+  genres?: string[]; // Movie genres
   torrent_info: UiTorrentInfo;
 }
 

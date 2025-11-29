@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 /// Standardized metadata model from various sources
 #[derive(Debug, Clone, Serialize, Deserialize)]

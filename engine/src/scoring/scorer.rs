@@ -1,6 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc, Duration as ChronoDuration};
-use std::collections::HashMap;
+use chrono::{DateTime, Utc};
 
 use super::models::{ScoreWeights, ScoreResult, ScoreBreakdown};
 use crate::models::{TorrentResult, ParsedMedia, MediaSearchResult};

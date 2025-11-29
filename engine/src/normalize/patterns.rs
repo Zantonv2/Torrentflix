@@ -64,7 +64,12 @@ impl PatternNormalizer {
     fn extract_with_pattern(&self, pattern_name: &str, text: &str) -> Option<String> {
         if let Some(re) = self.patterns.get(pattern_name) {
             if let Some(caps) = re.captures(text) {
-                return Some(caps.get(1)?.as_str().to_string());
+                // For year pattern, use full match (group 0), for others use group 1
+                if pattern_name == "year" {
+                    return Some(caps.get(0)?.as_str().to_string());
+                } else {
+                    return Some(caps.get(1)?.as_str().to_string());
+                }
             }
         }
         None

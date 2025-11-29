@@ -18,16 +18,8 @@
     imageError = true;
   }
   
-  function formatFileSize(sizeGb: number): string {
-    return `${sizeGb.toFixed(1)} GB`;
-  }
+  $: displayRating = movie.rating ? movie.rating.toFixed(1) : 'N/A';
   
-  function getQualityClass(quality: string): string {
-    if (quality.includes('4K') || quality.includes('2160p')) return 'quality-4k';
-    if (quality.includes('1080p')) return 'quality-1080p';
-    if (quality.includes('720p')) return 'quality-720p';
-    return 'quality-default';
-  }
 </script>
 
 <div style="width: 100%; flex-shrink: 0;">
@@ -86,14 +78,10 @@
         {movie.title}
       </div>
 
-      <!-- Quality badge -->
-      <div class="quality-badge {getQualityClass(movie.quality_badge)} text-xs text-left mb-1">
-        {movie.quality_badge}
-      </div>
-
-      <!-- Torrent info -->
-      <div class="text-netflix-text-muted text-xs text-left line-clamp-1">
-        {formatFileSize(movie.torrent_info.size_gb)} • {movie.torrent_info.seeders} seeders
+      <!-- Rating -->
+      <div class="text-netflix-text-muted text-xs text-left line-clamp-1 flex items-center gap-1">
+        <span class="text-yellow-400">★</span>
+        <span class="text-yellow-400">{displayRating}</span>
       </div>
     </div>
   </button>

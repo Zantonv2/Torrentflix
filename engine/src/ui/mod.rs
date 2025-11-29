@@ -5,4 +5,3 @@ pub mod dto;
 pub mod commands;
 
 pub use dto::{UiSearchResult, UiSearchRequest, UiSearchResponse, UiTorrentInfo};
-pub use commands::*;

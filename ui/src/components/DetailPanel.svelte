@@ -22,6 +22,49 @@
       dispatch('bookmark', movie);
     }
   }
+
+  $: hasGenres = movie?.genres && movie.genres.length > 0;
+  $: hasDescription = movie?.description && movie.description.trim().length > 0;
+  $: hasCast = movie?.cast && movie.cast.length > 0;
+  $: hasRuntime = movie?.runtime_minutes && movie.runtime_minutes > 0;
+  
+  let overviewExpanded = false;
+  const OVERVIEW_PREVIEW_LENGTH = 200;
+  
+  // Reset expansion when movie changes
+  $: if (movie) {
+    overviewExpanded = false;
+  }
+  
+  $: overviewText = movie?.description || '';
+  $: overviewPreview = overviewText.length > OVERVIEW_PREVIEW_LENGTH 
+    ? overviewText.substring(0, OVERVIEW_PREVIEW_LENGTH) + '...'
+    : overviewText;
+  $: showReadMore = overviewText.length > OVERVIEW_PREVIEW_LENGTH;
+
+  function genreClass(genre: string): string {
+    const g = genre.toLowerCase();
+    if (g.includes('ужас') || g.includes('horror') || g.includes('хоррор')) return 'bg-red-900/80 text-red-100 border border-red-700';
+    if (g.includes('комед') || g.includes('comedy')) return 'bg-yellow-500/80 text-yellow-900 border border-yellow-600';
+    if (g.includes('драм') || g.includes('drama')) return 'bg-blue-900/80 text-blue-100 border border-blue-700';
+    if (g.includes('фантаст') || g.includes('sci-fi') || g.includes('фэнтез')) return 'bg-purple-900/80 text-purple-100 border border-purple-700';
+    if (g.includes('боевик') || g.includes('action')) return 'bg-orange-600/80 text-white border border-orange-700';
+    if (g.includes('триллер') || g.includes('thriller')) return 'bg-rose-900/80 text-rose-100 border border-rose-700';
+    if (g.includes('криминал') || g.includes('crime')) return 'bg-gray-700/80 text-gray-100 border border-gray-600';
+    if (g.includes('мелодрам') || g.includes('romance')) return 'bg-pink-600/80 text-pink-100 border border-pink-700';
+    if (g.includes('приключ') || g.includes('adventure')) return 'bg-green-700/80 text-green-100 border border-green-600';
+    if (g.includes('мульт') || g.includes('аним') || g.includes('cartoon') || g.includes('anime')) return 'bg-sky-600/80 text-sky-100 border border-sky-700';
+    return 'bg-netflix-gray/50 text-white border border-gray-600';
+  }
+
+  function formatRuntime(minutes: number): string {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  }
 </script>
 
 {#if isOpen && movie}
@@ -36,12 +79,13 @@
       class="bg-netflix-card-bg rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl transform transition-all duration-300 scale-100 p-0 border-0"
       open
       aria-labelledby="movie-title"
+      on:click|stopPropagation
     >
       <!-- Backdrop image with gradient overlay -->
       <div class="relative h-[400px] bg-gradient-to-b from-transparent to-netflix-card-bg">
-        {#if movie.poster_url}
+        {#if movie.backdrop_url || movie.poster_url}
           <img 
-            src={movie.poster_url} 
+            src={movie.backdrop_url || movie.poster_url || ''} 
             alt={movie.title}
             class="w-full h-full object-cover opacity-50"
           />
@@ -69,6 +113,17 @@
       
       <!-- Content section -->
       <div class="p-8 overflow-y-auto" style="max-height: calc(90vh - 400px);">
+        <!-- Genres with colorful tags -->
+        {#if hasGenres}
+          <div class="flex flex-wrap gap-2 mb-6">
+            {#each (movie?.genres || []) as genre}
+              <span class={`px-3 py-1 text-xs font-medium rounded-full ${genreClass(genre)}`}>
+                {genre}
+              </span>
+            {/each}
+          </div>
+        {/if}
+
         <!-- Action buttons -->
         <div class="flex gap-4 mb-6">
           <button 
@@ -78,7 +133,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
             </svg>
-            Download
+            Скачать торрент
           </button>
           <button 
             on:click={handleBookmark}
@@ -87,46 +142,72 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
             </svg>
-            Bookmark
+            Добавить в закладки
           </button>
         </div>
         
         <!-- Movie info -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <!-- Left column - Basic info -->
-          <div>
-            <h2 class="text-white text-xl font-semibold mb-4">Movie Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <!-- Left column - Description and Cast -->
+          <div class="md:col-span-2">
+            <!-- Description -->
+            {#if hasDescription}
+              <div class="mb-6">
+                <h2 class="text-white text-xl font-semibold mb-3">Описание</h2>
+                <p class="text-white/80 leading-relaxed">
+                  {overviewExpanded ? overviewText : overviewPreview}
+                </p>
+                {#if showReadMore}
+                  <button
+                    on:click|stopPropagation={() => overviewExpanded = !overviewExpanded}
+                    class="mt-2 text-netflix-red hover:text-red-400 text-sm font-medium transition-colors"
+                  >
+                    {overviewExpanded ? 'Свернуть' : 'Читать далее'}
+                  </button>
+                {/if}
+              </div>
+            {/if}
             
-            <!-- Quality and torrent info -->
-            <div class="bg-netflix-gray/20 rounded-lg p-4 mb-4">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-white font-medium">Quality:</span>
-                <span class="text-netflix-red font-semibold">{movie.quality_badge}</span>
-              </div>
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-white font-medium">Size:</span>
-                <span class="text-white/80">{movie.torrent_info.size_gb.toFixed(1)} GB</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-white font-medium">Seeders:</span>
-                <span class="text-white/80">{movie.torrent_info.seeders}</span>
-              </div>
-            </div>
-            
-            <!-- Additional metadata -->
-            {#if movie.category}
-              <div class="mb-3">
-                <span class="text-white/60 text-sm">Genre:</span>
-                <div class="text-white">{movie.category}</div>
+            <!-- Cast -->
+            {#if hasCast}
+              <div class="mb-6">
+                <h2 class="text-white text-xl font-semibold mb-3">В ролях</h2>
+                <div class="text-white/80">
+                  {(movie?.cast || []).join(', ')}
+                </div>
               </div>
             {/if}
           </div>
           
-          <!-- Right column - Description -->
-          <div>
-            <h2 class="text-white text-xl font-semibold mb-4">Description</h2>
-            <div class="text-white/80 leading-relaxed">
-              No description available for this movie.
+          <!-- Right column - Metadata -->
+          <div class="space-y-6">
+            <!-- Duration -->
+            {#if hasRuntime}
+              <div>
+                <h3 class="text-sm font-semibold text-white/60 mb-1">Длительность</h3>
+                <div class="text-white">
+                  {formatRuntime(movie?.runtime_minutes || 0)}
+                </div>
+              </div>
+            {/if}
+            
+            <!-- Quality and torrent info -->
+            <div class="bg-netflix-gray/20 rounded-lg p-4">
+              <h3 class="text-sm font-semibold text-white/60 mb-3">Информация о торренте</h3>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-white/80 text-sm">Качество:</span>
+                  <span class="text-netflix-red font-semibold">{movie?.quality_badge}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/80 text-sm">Размер:</span>
+                  <span class="text-white">{movie?.torrent_info.size_gb.toFixed(1)} GB</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/80 text-sm">Сидеры:</span>
+                  <span class="text-white">{movie?.torrent_info.seeders}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

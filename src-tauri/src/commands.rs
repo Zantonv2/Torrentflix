@@ -51,6 +51,55 @@ pub async fn search_movies(
     }
 }
 
+/// Test command to verify IPC bridge works
+#[tauri::command]
+pub async fn test_connection() -> Result<String, String> {
+    eprintln!("🧪 Tauri: test_connection called - eprintln bypassing tracing");
+    info!("🧪 Tauri: test_connection called");
+    Ok("IPC bridge working!".to_string())
+}
+
+/// Get feed of recent movies
+#[tauri::command]
+pub async fn get_feed(
+    engine: State<'_, Engine>,
+) -> Result<UiSearchResponse, String> {
+    eprintln!("🎬 Tauri: get_feed command called - eprintln bypassing tracing");
+    info!("🎬 Tauri: get_feed command called");
+    
+    match engine.get_feed().await {
+        Ok(results) => {
+            info!("🎉 Tauri: Engine returned {} results", results.len());
+            
+            // Convert to UI DTOs
+            let ui_results: Vec<UiSearchResult> = results
+                .into_iter()
+                .filter_map(UiSearchResult::from_media_search_result)
+                .collect();
+            
+            info!("🔄 Tauri: Converted {} results to UI format", ui_results.len());
+            
+            for (i, result) in ui_results.iter().take(3).enumerate() {
+                debug!("📽️ Tauri UI Result {}: '{}' - {}", i, result.title, result.quality_badge);
+            }
+            
+            let total_count = ui_results.len() as u32;
+            let response = UiSearchResponse {
+                results: ui_results,
+                total: total_count,
+                took_ms: 0, // Would need to track timing
+            };
+            
+            info!("✅ Tauri: Returning response with {} movies to UI", response.results.len());
+            Ok(response)
+        }
+        Err(e) => {
+            error!("❌ Tauri: Feed error: {}", e);
+            Err(format!("Failed to fetch feed: {}", e))
+        }
+    }
+}
+
 /// Get torrent magnet link for download
 #[tauri::command]
 pub async fn get_magnet_link(
@@ -73,7 +122,7 @@ pub async fn get_engine_status(
     
     let status = serde_json::json!({
         "engine": "healthy",
-        "indexers": ["yts"],
+        "indexers": ["monna2"],
         "metadata": ["tmdb"],
         "scoring": "enabled",
         "version": "0.1.0"

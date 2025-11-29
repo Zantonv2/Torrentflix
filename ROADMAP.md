@@ -168,15 +168,16 @@ docs/
 2. ✅ **Define domain models**: `TorrentResult`, `ParsedMedia`, `EnrichedMedia`, `DownloadStatus`, `LibraryItem`.
 3. ✅ **Implement Indexer trait** and a simple static registry + manager that runs indexers concurrently.
 4. ✅ **Port or include guessit-rs** and integrate normalizer pipeline (enhanced pattern-based normalizer with advanced regex patterns).
-5. ✅ **Implement one indexer** (YTS) as a template adapter; test end‑to‑end search → normalization.
-6. 🔄 **Add metadata clients**: TMDb wrapper + caching layer.
-7. ⏳ **Implement dedupe + scoring** modules and a basic UI DTO flow.
-8. ⏳ **Add qBittorrent client adapter** and test add/pause/resume/status flows.
-9. ⏳ **Implement filesystem manager** with staging + atomic move + renamer driven by `ParsedMedia`.
-10. ⏳ **Wire library DB** (SQLite) and persist download results; expose library endpoints to UI via commands.
-11. ⏳ **Add job scheduler** and background watchers (rescan, watchlist scanning).
-12. ⏳ **Add notifications** and polish UI/UX.
-13. ⏳ **Harden**: add retries, circuit breakers, rate limits, logging, and tests.
+5. ✅ **Implement YTS indexer** as a template adapter; test end‑to‑end search → normalization.
+6. ✅ **Implement MonnaIndexer**: Complete indexer with dynamic torrent extraction, metadata parsing, poster URL extraction, and full Netflix-style integration.
+7. ✅ **Add metadata clients**: Basic metadata structure with poster_url field support for UI integration.
+8. 🔄 **Implement Netflix-style UI components**: Complete component library including MovieGrid, MovieTile, SkeletonTile, LoadingDots, TopBar, TabBar, DetailPanel with full accessibility compliance.
+9. ⏳ **Add qBittorrent client adapter** and test add/pause/resume/status flows.
+10. ⏳ **Implement filesystem manager** with staging + atomic move + renamer driven by `ParsedMedia`.
+11. ⏳ **Wire library DB** (SQLite) and persist download results; expose library endpoints to UI via commands.
+12. ⏳ **Add job scheduler** and background watchers (rescan, watchlist scanning).
+13. ⏳ **Add notifications** and polish UI/UX.
+14. ⏳ **Harden**: add retries, circuit breakers, rate limits, logging, and tests.
 
 ---
 
@@ -196,5 +197,26 @@ docs/
 * **Adding an indexer:** create new module, parse site, map to `TorrentResult`, register. No engine changes.
 * **Plugins/hook points:** postdownload, prerenaming, prescan hooks allow custom behavior.
 * **CLI / headless:** expose engine API via a CLI wrapper for headless operation and automation.
+
+---
+
+## Recent work (Nov 2025) — debugged / further implementation
+
+- **Monna indexer (partially implemented)**
+  - Implemented DOM‑based genre parsing (info table inside `div.fullstory`) with regex fallback, wiring into `MonnaMetadata`.
+  - Started propagating `genres: Vec<String>` through `TorrentResult` (list + details flows).
+  - TODO / needs verification:
+    - Confirm `TorrentResult.genres` is filled correctly for all Monna search paths.
+    - Check multiple real Monna pages (different layouts / multiple genres) and adjust selectors if needed.
+    - Ensure `EnrichedMedia` / UI DTOs always carry the parsed genres.
+
+- **UI / Movie cards (partially implemented)**
+  - Card overlay: simplified Svelte markup to show only title, year, and a placeholder rating badge (for later TMDb integration).
+  - Detail modal: implemented layout to show description, cast, duration, seeds/leechers/size, download + bookmark buttons, backdrop image (when available), and genres as colored pill tags (red for horror / "ужасы", etc.).
+  - TODO / needs verification:
+    - Old overlay elements (GB + seeders row) still appear in current build → re‑run dev build and confirm only the new overlay is rendered.
+    - Verify `movie.genres` is actually populated from backend for Monna results (pill tags should appear).
+    - Wire real rating + backdrop from TMDb when metadata integration is ready.
+
 
 ---

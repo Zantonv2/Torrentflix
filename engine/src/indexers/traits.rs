@@ -23,6 +23,11 @@ pub trait Indexer: Send + Sync {
     /// Get detailed information about a specific torrent (if supported)
     async fn get_details(&self, info_hash: &str) -> Result<Option<TorrentResult>>;
     
+    /// Get feed of recent movies (if supported)
+    async fn get_feed(&self) -> Result<Vec<TorrentResult>> {
+        Ok(vec![])
+    }
+    
     /// Test connectivity to the indexer
     async fn test_connection(&self) -> Result<bool>;
     

@@ -114,8 +114,6 @@ impl Default for NormalizerConfig {
 
 /// Utility functions for common normalization tasks
 pub mod utils {
-    use super::*;
-
     pub fn extract_year(title: &str) -> Option<u32> {
         let re = regex::Regex::new(r"\b(19|20)\d{2}\b").ok()?;
         
