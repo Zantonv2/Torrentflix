@@ -17,6 +17,8 @@ export interface UiSearchResult {
   cast?: string[]; // Cast members
   genres?: string[]; // Movie genres
   torrent_info: UiTorrentInfo;
+  number_of_seasons?: number; // For TV shows
+  number_of_episodes?: number; // For TV shows
 }
 
 export interface UiTorrentInfo {

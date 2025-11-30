@@ -258,24 +258,47 @@ impl Engine {
                 match self.normalizer.normalize(&torrent_result) {
                     Ok(parsed_media) => {
                         debug!("✅ Engine: Normalized successfully: {}", parsed_media.title);
-                        // Create enriched media (without external metadata for feed)
-                        let mut enriched = EnrichedMedia::new(parsed_media);
+                        // Enrich with TMDB metadata to get backdrop_url and other metadata
+                        let mut enriched = match self.enrich_with_metadata(parsed_media.clone()).await {
+                            Ok(e) => e,
+                            Err(e) => {
+                                warn!("Failed to enrich with metadata: {}", e);
+                                EnrichedMedia::new(parsed_media)
+                            }
+                        };
                         
-                        // Preserve metadata from TorrentResult (poster_url, description, cast, runtime, genres)
+                        // Preserve original metadata from TorrentResult as primary source
+                        // TMDB metadata is used as fallback/enhancement
+                        // Note: backdrop_url comes only from TMDB; if not available, UI will fallback to poster_url
+                        // Poster and description: prefer original, use TMDB as fallback
                         if let Some(poster_url) = torrent_result.poster_url.clone() {
                             enriched.poster_url = Some(poster_url);
+                        } else if enriched.poster_url.is_none() {
+                            // Keep TMDB poster if no original
                         }
+                        
                         if let Some(description) = torrent_result.description.clone() {
                             enriched.overview = Some(description);
+                        } else if enriched.overview.is_none() {
+                            // Keep TMDB overview if no original
                         }
-                        if !torrent_result.cast.is_empty() {
-                            enriched.cast = torrent_result.cast.clone();
+                        
+                        // backdrop_url is set by TMDB enrichment if available, otherwise remains None
+                        // UI will automatically fallback to poster_url when backdrop_url is None
+                        if enriched.cast.is_empty() {
+                            if !torrent_result.cast.is_empty() {
+                                enriched.cast = torrent_result.cast.clone();
+                            }
                         }
-                        if let Some(runtime) = torrent_result.runtime_minutes {
-                            enriched.runtime_minutes = Some(runtime);
+                        if enriched.runtime_minutes.is_none() {
+                            if let Some(runtime) = torrent_result.runtime_minutes {
+                                enriched.runtime_minutes = Some(runtime);
+                            }
                         }
-                        if !torrent_result.genres.is_empty() {
-                            enriched.genres = torrent_result.genres.clone();
+                        if enriched.genres.is_empty() {
+                            if !torrent_result.genres.is_empty() {
+                                enriched.genres = torrent_result.genres.clone();
+                            }
                         }
                         
                         // Create media search result
@@ -383,14 +406,20 @@ impl Engine {
                     // Enrich with metadata from TMDb
                     let mut enriched = self.enrich_with_metadata(parsed_media).await?;
                     
-                    // Preserve metadata from TorrentResult (poster_url, description, cast, runtime, genres)
-                    // Only override if TMDB didn't provide it
-                    if enriched.poster_url.is_none() {
-                        enriched.poster_url = torrent_result.poster_url.clone();
+                    // Preserve original metadata from TorrentResult as primary source
+                    // TMDB metadata is used as fallback/enhancement
+                    // Note: backdrop_url comes only from TMDB; if not available, UI will fallback to poster_url
+                    // Poster and description: prefer original, use TMDB as fallback
+                    if let Some(poster_url) = torrent_result.poster_url.clone() {
+                        enriched.poster_url = Some(poster_url);
                     }
-                    if enriched.overview.is_none() {
-                        enriched.overview = torrent_result.description.clone();
+                    
+                    if let Some(description) = torrent_result.description.clone() {
+                        enriched.overview = Some(description);
                     }
+                    
+                    // backdrop_url is set by TMDB enrichment if available, otherwise remains None
+                    // UI will automatically fallback to poster_url when backdrop_url is None
                     if enriched.cast.is_empty() && !torrent_result.cast.is_empty() {
                         enriched.cast = torrent_result.cast.clone();
                     }
@@ -556,10 +585,16 @@ impl Engine {
 
     /// Enrich parsed media with metadata from TMDb
     async fn enrich_with_metadata(&self, parsed_media: crate::models::ParsedMedia) -> Result<EnrichedMedia> {
+        debug!("Enriching media: title='{}', type={:?}, year={:?}", 
+               parsed_media.title, parsed_media.media_type, parsed_media.year);
+        
         // Convert media type for metadata search
         let metadata_type = match parsed_media.media_type {
             MediaType::Movie => crate::metadata::MetadataMediaType::Movie,
-            MediaType::Series => crate::metadata::MetadataMediaType::Series,
+            MediaType::Series => {
+                debug!("Detected TV Series - will search TMDB for TV shows");
+                crate::metadata::MetadataMediaType::Series
+            },
             MediaType::Documentary => crate::metadata::MetadataMediaType::Movie, // Treat as movie for now
             MediaType::Anime => crate::metadata::MetadataMediaType::Movie, // Treat as movie for now
             MediaType::Other => crate::metadata::MetadataMediaType::Movie, // Default to movie
@@ -572,9 +607,33 @@ impl Engine {
             metadata_type.clone()
         ).await?;
 
-        if let Some(best_match) = search_results.first() {
+        // Select best match by comparing year if available
+        let best_match = if let Some(target_year) = parsed_media.year {
+            // Try to find exact year match first
+            search_results.iter()
+                .find(|r| r.year == Some(target_year))
+                .or_else(|| {
+                    // If no exact match, find closest year
+                    search_results.iter()
+                        .min_by_key(|r| {
+                            r.year.map(|y| (y as i32 - target_year as i32).abs())
+                                .unwrap_or(1000)
+                        })
+                })
+                .or_else(|| search_results.first())
+        } else {
+            search_results.first()
+        };
+
+        if let Some(best_match) = best_match {
+            debug!("Selected TMDB match: {} ({:?}) for parsed media: {} ({:?})", 
+                   best_match.title, best_match.year, parsed_media.title, parsed_media.year);
+            
             // Get detailed metadata for the best match
             if let Ok(Some(metadata)) = self.metadata_manager.get_details(&best_match.id, metadata_type).await {
+                debug!("TMDB metadata retrieved - Type: {:?}, Seasons: {:?}, Episodes: {:?}", 
+                       metadata.media_type, metadata.number_of_seasons, metadata.number_of_episodes);
+                
                 let mut enriched = EnrichedMedia::new(parsed_media);
                 // Map MediaMetadata fields to EnrichedMedia with correct field names
                 enriched.tmdb_id = metadata.external_ids.tmdb_id.and_then(|s| s.parse::<u32>().ok());
@@ -585,6 +644,12 @@ impl Engine {
                 enriched.genres = metadata.genres;
                 enriched.rating_tmdb = metadata.vote_average;
                 enriched.runtime_minutes = metadata.runtime;
+                enriched.number_of_seasons = metadata.number_of_seasons;
+                enriched.number_of_episodes = metadata.number_of_episodes;
+                
+                debug!("Enriched media - Seasons: {:?}, Episodes: {:?}", 
+                       enriched.number_of_seasons, enriched.number_of_episodes);
+                
                 return Ok(enriched);
             }
         }

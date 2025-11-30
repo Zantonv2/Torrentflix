@@ -28,6 +28,16 @@
   $: hasDescription = movie.description && movie.description.trim().length > 0;
   $: hasCast = movie.cast && movie.cast.length > 0;
   $: hasGenres = movie.genres && movie.genres.length > 0;
+  
+  // Debug: Log TV show info
+  $: if (movie.number_of_seasons || movie.number_of_episodes) {
+    console.log('MovieCard - TV Show detected:', {
+      title: movie.title,
+      seasons: movie.number_of_seasons,
+      episodes: movie.number_of_episodes,
+      fullMovie: movie
+    });
+  }
 
   function genreClass(genre: string): string {
     const g = genre.toLowerCase();
@@ -100,13 +110,21 @@
             {/if}
           </div>
           
-          <!-- Placeholder for season info (will be implemented with TMDB integration) -->
-          <!--
-          <div class="flex items-center">
-            <span class="text-blue-400 mr-1">📺</span>
-            <span>S1 E1-10</span>
-          </div>
-          -->
+          <!-- TV Show Season/Episode Info -->
+          {#if movie.number_of_seasons || movie.number_of_episodes}
+            <div class="flex items-center text-xs text-blue-400 mt-1">
+              <span class="mr-1">📺</span>
+              {#if movie.number_of_seasons}
+                <span>{movie.number_of_seasons} сезон</span>
+              {/if}
+              {#if movie.number_of_seasons && movie.number_of_episodes}
+                <span class="mx-1">•</span>
+              {/if}
+              {#if movie.number_of_episodes}
+                <span>{movie.number_of_episodes} эп.</span>
+              {/if}
+            </div>
+          {/if}
         </div>
         
         <!-- Action Buttons -->
@@ -194,6 +212,21 @@
                 <h4 class="text-sm font-semibold text-gray-400 mb-1">Длительность</h4>
                 <div class="text-white">
                   {Math.floor(movie.runtime_minutes / 60)}h {movie.runtime_minutes % 60}m
+                </div>
+              </div>
+            {/if}
+            
+            <!-- TV Show Info -->
+            {#if movie.number_of_seasons || movie.number_of_episodes}
+              <div>
+                <h4 class="text-sm font-semibold text-gray-400 mb-1">Сериал</h4>
+                <div class="text-white">
+                  {#if movie.number_of_seasons}
+                    <div>{movie.number_of_seasons} {movie.number_of_seasons === 1 ? 'сезон' : 'сезона'}</div>
+                  {/if}
+                  {#if movie.number_of_episodes}
+                    <div>{movie.number_of_episodes} {movie.number_of_episodes === 1 ? 'эпизод' : 'эпизодов'}</div>
+                  {/if}
                 </div>
               </div>
             {/if}

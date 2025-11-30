@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte';
   import MovieTile from './MovieTile.svelte';
   import SkeletonTile from './SkeletonTile.svelte';
   import LoadingDots from './LoadingDots.svelte';
@@ -7,22 +8,22 @@
   export let movies: UiSearchResult[] = [];
   export let loading = false;
   
+  const dispatch = createEventDispatcher();
+  
   function handleMovieClick(movie: UiSearchResult) {
-    // Dispatch custom event for movie selection
-    const event = new CustomEvent('movieSelect', { detail: movie });
-    document.dispatchEvent(event);
+    dispatch('movieSelect', movie);
   }
 </script>
 
-<div class="flex-1 flex flex-col overflow-hidden">
-  <!-- Movie Grid -->
-  <div class="flex-1 overflow-y-auto p-8">
+<div class="flex-1 overflow-y-auto" style="min-height: 0;">
     {#if loading && movies.length === 0}
       <!-- Initial skeleton loading state -->
-      <div class="grid gap-6 justify-center" style="grid-template-columns: repeat(5, 1fr);">
-        {#each Array(10) as _}
-          <SkeletonTile />
-        {/each}
+      <div class="p-8">
+        <div class="grid gap-6 justify-center" style="grid-template-columns: repeat(5, 1fr);">
+          {#each Array(10) as _}
+            <SkeletonTile />
+          {/each}
+        </div>
       </div>
     {:else if movies.length === 0}
       <!-- Empty state -->
@@ -34,25 +35,26 @@
       </div>
     {:else}
       <!-- Movies grid -->
-      <div class="grid gap-6 justify-center" style="grid-template-columns: repeat(5, 1fr);">
-        {#each movies as movie, i (`${movie.id}-${i}`)}
-          <MovieTile {movie} on:click={() => handleMovieClick(movie)} />
-        {/each}
-        
-        <!-- Loading skeletons at bottom -->
-        {#if loading}
-          {#each Array(5) as _}
-            <SkeletonTile />
+      <div class="p-8">
+        <div class="grid gap-6 justify-center" style="grid-template-columns: repeat(5, 1fr);">
+          {#each movies as movie, i (`${movie.id}-${i}`)}
+            <MovieTile {movie} on:click={() => handleMovieClick(movie)} />
           {/each}
+          
+          <!-- Loading skeletons at bottom -->
+          {#if loading}
+            {#each Array(5) as _}
+              <SkeletonTile />
+            {/each}
+          {/if}
+        </div>
+        
+        <!-- Loading dots indicator for pagination -->
+        {#if loading && movies.length > 0}
+          <LoadingDots />
         {/if}
       </div>
-      
-      <!-- Loading dots indicator for pagination -->
-      {#if loading && movies.length > 0}
-        <LoadingDots />
-      {/if}
     {/if}
-  </div>
 </div>
 
 <style>

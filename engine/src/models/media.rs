@@ -128,6 +128,8 @@ pub struct EnrichedMedia {
     pub rating_kinopoisk: Option<f32>,
     pub release_date: Option<DateTime<Utc>>,
     pub external_urls: HashMap<String, String>, // Key: source, Value: URL
+    pub number_of_seasons: Option<u32>,
+    pub number_of_episodes: Option<u32>,
 }
 
 impl EnrichedMedia {
@@ -149,6 +151,8 @@ impl EnrichedMedia {
             rating_kinopoisk: None,
             release_date: None,
             external_urls: HashMap::new(),
+            number_of_seasons: None,
+            number_of_episodes: None,
         }
     }
 

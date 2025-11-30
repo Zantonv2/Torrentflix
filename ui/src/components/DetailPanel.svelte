@@ -87,7 +87,8 @@
           <img 
             src={movie.backdrop_url || movie.poster_url || ''} 
             alt={movie.title}
-            class="w-full h-full object-cover opacity-50"
+            class="w-full h-full object-cover opacity-50 blur-sm"
+            style="filter: blur(8px);"
           />
         {/if}
         <div class="absolute inset-0 bg-gradient-to-t from-netflix-card-bg via-netflix-card-bg/50 to-transparent"></div>

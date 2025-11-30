@@ -78,7 +78,9 @@ impl Normalizer {
         
         if title_lower.contains("s0") && (title_lower.contains("e0") || title_lower.contains("ex")) {
             MediaType::Series
-        } else if title_lower.contains("season") || title_lower.contains("episode") {
+        } else if title_lower.contains("season") || title_lower.contains("episode") ||
+                  title_lower.contains("сериал") || title_lower.contains("сезон") ||
+                  title_lower.contains("серия") {
             MediaType::Series
         } else if title_lower.contains("documentary") || title_lower.contains("doc") {
             MediaType::Documentary

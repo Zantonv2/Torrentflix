@@ -18,6 +18,8 @@ pub struct MediaMetadata {
     pub vote_count: Option<u32>,
     pub imdb_id: Option<String>,
     pub external_ids: ExternalIds,
+    pub number_of_seasons: Option<u32>,
+    pub number_of_episodes: Option<u32>,
 }
 
 /// External IDs from various sources
@@ -69,6 +71,8 @@ impl MediaMetadata {
                 imdb_id: None,
                 kinopoisk_id: None,
             },
+            number_of_seasons: None,
+            number_of_episodes: None,
         }
     }
 }

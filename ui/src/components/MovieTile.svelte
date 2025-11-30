@@ -32,6 +32,16 @@
     return movie.rating ? movie.rating.toFixed(1) : 'N/A';
   })();
   
+  // Debug: Log TV show info
+  $: if (movie.number_of_seasons || movie.number_of_episodes) {
+    console.log('TV Show detected:', {
+      title: movie.title,
+      seasons: movie.number_of_seasons,
+      episodes: movie.number_of_episodes,
+      fullMovie: movie
+    });
+  }
+  
 </script>
 
 <div style="width: 100%; flex-shrink: 0;">
@@ -90,8 +100,8 @@
         {movie.title}
       </div>
 
-      <!-- Rating -->
-      <div class="text-netflix-text-muted text-xs text-left line-clamp-1 flex items-center gap-1">
+      <!-- Rating and TV Show Info -->
+      <div class="text-netflix-text-muted text-xs text-left line-clamp-1 flex items-center gap-1 flex-wrap">
         {#if movie.rating_kinopoisk || movie.rating_imdb}
           <span class="text-yellow-400">⭐</span>
           <span class="text-yellow-400">{displayRating}</span>
@@ -100,6 +110,17 @@
           <span class="text-yellow-400">{displayRating}</span>
         {:else}
           <span class="text-gray-400">N/A</span>
+        {/if}
+        
+        <!-- TV Show Season/Episode Info -->
+        {#if movie.number_of_seasons || movie.number_of_episodes}
+          <span class="text-white/60">•</span>
+          {#if movie.number_of_seasons}
+            <span class="text-white/80">{movie.number_of_seasons} сезон</span>
+          {/if}
+          {#if movie.number_of_episodes}
+            <span class="text-white/80">{movie.number_of_episodes} эп.</span>
+          {/if}
         {/if}
       </div>
     </div>

@@ -18,6 +18,8 @@ pub struct UiSearchResult {
     pub cast: Vec<String>,
     pub genres: Vec<String>,
     pub torrent_info: UiTorrentInfo,
+    pub number_of_seasons: Option<u32>,
+    pub number_of_episodes: Option<u32>,
 }
 
 /// Minimal torrent information for UI
@@ -67,6 +69,8 @@ impl UiSearchResult {
             description: result.enriched.overview.clone(),
             cast: result.enriched.cast.clone(),
             genres: result.enriched.genres.clone(),
+            number_of_seasons: result.enriched.number_of_seasons,
+            number_of_episodes: result.enriched.number_of_episodes,
             torrent_info: UiTorrentInfo {
                 seeders: best_quality.seeders,
                 size_gb: best_quality.size_bytes as f32 / (1024.0 * 1024.0 * 1024.0),

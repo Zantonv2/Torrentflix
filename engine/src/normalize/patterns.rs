@@ -211,9 +211,11 @@ impl PatternNormalizer {
     fn guess_media_type_from_title(&self, title: &str) -> MediaType {
         let title_lower = title.to_lowercase();
         
-        // Check for series indicators
+        // Check for series indicators (English and Russian)
         if title_lower.contains("season") || title_lower.contains("episode") ||
-           title_lower.contains("complete") || title_lower.contains("series") {
+           title_lower.contains("complete") || title_lower.contains("series") ||
+           title_lower.contains("сериал") || title_lower.contains("сезон") ||
+           title_lower.contains("серия") {
             return MediaType::Series;
         }
         

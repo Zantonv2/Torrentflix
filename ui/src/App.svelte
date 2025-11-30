@@ -201,10 +201,10 @@
   });
 </script>
 
-<div class="min-h-screen bg-black">
+<div class="flex flex-col bg-netflix-dark-bg" style="height: 100vh; overflow: hidden;">
   {#if isInitialLoading}
     <!-- Initial loading state - prevents white screen -->
-    <div class="flex items-center justify-center min-h-screen bg-black">
+    <div class="flex items-center justify-center h-screen bg-netflix-dark-bg">
       <LoadingSpinner />
     </div>
   {:else}
@@ -212,72 +212,68 @@
     <!-- Netflix-style Top Bar -->
     <TopBar on:search={(e) => handleSearch(e.detail)} />
     
-    <!-- Netflix-style Tab Bar -->
-    <TabBar currentTab={currentTab} on:tabChange={handleTabChange} />
-
     <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-      {#if isLoading}
-        <div class="flex justify-center items-center h-64">
-          <!-- Loading state handled by MovieGrid with SkeletonTile -->
-          <MovieGrid movies={[]} loading={true} />
-        </div>
-      {:else if error}
-        <div class="text-center py-12">
-          <div class="text-netflix-red text-lg mb-4">
-            {isFeedView ? 'Ошибка загрузки ленты' : 'Ошибка поиска'}
+    <div class="flex flex-1 overflow-hidden" style="min-height: 0; height: calc(100vh - 70px);">
+      <!-- Left Side: Tab Bar + Content -->
+      <div class="flex-1 flex flex-col overflow-hidden" style="min-height: 0;">
+        <TabBar currentTab={currentTab} on:tabChange={handleTabChange} />
+        
+        {#if isLoading && searchResults.length === 0}
+          <MovieGrid movies={[]} loading={true} on:movieSelect={handleMovieSelect} />
+        {:else if error}
+          <div class="flex-1 flex items-center justify-center overflow-y-auto">
+            <div class="text-center py-12">
+              <div class="text-netflix-red text-lg mb-4">
+                {isFeedView ? 'Ошибка загрузки ленты' : 'Ошибка поиска'}
+              </div>
+              <div class="text-netflix-light">{error}</div>
+              <button 
+                class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
+                on:click={() => isFeedView ? loadFeed() : handleSearch(searchQuery)}
+              >
+                Повторить
+              </button>
+            </div>
           </div>
-          <div class="text-netflix-light">{error}</div>
-          <button 
-            class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
-            on:click={() => isFeedView ? loadFeed() : handleSearch(searchQuery)}
-          >
-            Повторить
-          </button>
-        </div>
-      {:else if searchResults.length === 0}
-        <div class="text-center py-12">
-          <div class="text-netflix-light text-lg mb-4">
-            {isFeedView ? 'Нет фильмов в ленте' : (searchQuery ? 'Ничего не найдено' : 'Начните поиск фильмов')}
+        {:else if searchResults.length === 0}
+          <div class="flex-1 flex items-center justify-center overflow-y-auto">
+            <div class="text-center py-12">
+              <div class="text-netflix-light text-lg mb-4">
+                {isFeedView ? 'Нет фильмов в ленте' : (searchQuery ? 'Ничего не найдено' : 'Начните поиск фильмов')}
+              </div>
+              {#if searchQuery && !isFeedView}
+                <div class="text-sm text-gray-500">
+                  Попробуйте другие ключевые слова или проверьте правописание
+                </div>
+              {:else if isFeedView}
+                <div class="text-sm text-gray-500">
+                  Проверьте подключение или попробуйте позже
+                </div>
+              {/if}
+            </div>
           </div>
-          {#if searchQuery && !isFeedView}
-            <div class="text-sm text-gray-500">
-              Попробуйте другие ключевые слова или проверьте правописание
-            </div>
-          {:else if isFeedView}
-            <div class="text-sm text-gray-500">
-              Проверьте подключение или попробуйте позже
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <div class="mb-6">
-          <h2 class="text-xl font-semibold text-netflix-white">
-            {isFeedView ? 'Недавние фильмы' : `${searchResults.length} результатов по запросу "${searchQuery}"`}
-          </h2>
-          {#if isFeedView}
-            <div class="text-sm text-gray-400 mt-1">
-              Последние фильмы с Monna2
-            </div>
-          {/if}
-        </div>
-        <MovieGrid movies={searchResults} loading={false} />
-      {/if}
-    </main>
+        {:else}
+          <MovieGrid movies={searchResults} loading={isLoading} on:movieSelect={handleMovieSelect} />
+        {/if}
+      </div>
 
-    <!-- Movie Detail Panel -->
-    {#if selectedMovie}
-      <DetailPanel 
-        movie={selectedMovie} 
-        isOpen={true}
-        on:close={handleCloseDetail}
-        on:download={handleDownload}
-        on:bookmark={handleBookmark}
-      />
-    {/if}
+      <!-- Right Side: Detail Panel (slides in) -->
+      {#if selectedMovie}
+        <DetailPanel 
+          movie={selectedMovie} 
+          isOpen={true}
+          on:close={handleCloseDetail}
+          on:download={handleDownload}
+          on:bookmark={handleBookmark}
+        />
+      {/if}
+    </div>
   {/if}
 </div>
 
 <style>
-  /* Additional styles if needed */
+  /* Ensure flex containers can scroll */
+  :global(.flex-1) {
+    min-height: 0;
+  }
 </style>

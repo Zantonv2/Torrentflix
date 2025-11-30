@@ -105,6 +105,10 @@ struct TmdbTvDetails {
     first_air_date: Option<String>,
     #[serde(rename = "episode_run_time")]
     episode_run_time: Option<Vec<i32>>,
+    #[serde(rename = "number_of_seasons")]
+    number_of_seasons: Option<i32>,
+    #[serde(rename = "number_of_episodes")]
+    number_of_episodes: Option<i32>,
     genres: Option<Vec<TmdbGenre>>,
     #[serde(rename = "poster_path")]
     poster_path: Option<String>,
@@ -304,6 +308,10 @@ impl TmdbClient {
             imdb_id,
             kinopoisk_id: None,
         };
+        
+        // Extract season and episode counts for TV shows
+        metadata.number_of_seasons = tv.number_of_seasons.map(|s| s as u32);
+        metadata.number_of_episodes = tv.number_of_episodes.map(|e| e as u32);
 
         metadata
     }
@@ -380,6 +388,7 @@ impl MetadataProvider for TmdbClient {
                     ("api_key".to_string(), api_key.clone()),
                     ("query".to_string(), title.to_string()),
                     ("page".to_string(), "1".to_string()),
+                    ("language".to_string(), "ru-RU".to_string()), // Prioritize Russian metadata
                 ];
                 
                 if let Some(year_val) = year {
@@ -417,6 +426,7 @@ impl MetadataProvider for TmdbClient {
                     ("api_key".to_string(), api_key.clone()),
                     ("query".to_string(), title.to_string()),
                     ("page".to_string(), "1".to_string()),
+                    ("language".to_string(), "ru-RU".to_string()), // Prioritize Russian metadata
                 ];
                 
                 if let Some(year_val) = year {
@@ -483,7 +493,7 @@ impl MetadataProvider for TmdbClient {
                     async {
                         self.client
                             .get(&details_url)
-                            .query(&[("api_key", api_key.as_str()), ("append_to_response", "external_ids")])
+                            .query(&[("api_key", api_key.as_str()), ("language", "ru-RU"), ("append_to_response", "external_ids")])
                             .send()
                             .await?
                             .json::<TmdbMovieDetails>()
@@ -516,7 +526,7 @@ impl MetadataProvider for TmdbClient {
                     async {
                         self.client
                             .get(&details_url)
-                            .query(&[("api_key", api_key.as_str()), ("append_to_response", "external_ids")])
+                            .query(&[("api_key", api_key.as_str()), ("language", "ru-RU"), ("append_to_response", "external_ids")])
                             .send()
                             .await?
                             .json::<TmdbTvDetails>()
