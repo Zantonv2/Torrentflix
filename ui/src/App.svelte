@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { listen } from '@tauri-apps/api/event';
   import TopBar from './components/TopBar.svelte';
   import TabBar from './components/TabBar.svelte';
   import MovieGrid from './components/MovieGrid.svelte';
@@ -104,12 +105,99 @@
     console.log('Bookmark:', event.detail.title);
   }
 
-  onMount(() => {
+  function handleRatingUpdate(update: { movie_id: string; rating_kinopoisk?: number; rating_imdb?: number; rating_tmdb?: number }) {
+    console.log('⭐ Rating update received:', update);
+    console.log('⭐ Current searchResults length:', searchResults.length);
+    console.log('⭐ Looking for movie_id:', update.movie_id);
+    console.log('⭐ Available movie IDs (first 10):', searchResults.map(m => m.id).slice(0, 10));
+    
+    // Find the movie in searchResults and update its ratings
+    const movieIndex = searchResults.findIndex(m => m.id === update.movie_id);
+    console.log('⭐ Movie index found:', movieIndex);
+    
+    if (movieIndex === -1) {
+      console.warn(`⚠️ Movie with id "${update.movie_id}" not found in searchResults`);
+      console.warn('⚠️ Full list of IDs:', searchResults.map(m => `"${m.id}"`));
+      return;
+    }
+    
+    if (movieIndex !== -1) {
+      const movie = searchResults[movieIndex];
+      
+      // Update individual ratings
+      if (update.rating_kinopoisk !== undefined) {
+        movie.rating_kinopoisk = update.rating_kinopoisk;
+      }
+      if (update.rating_imdb !== undefined) {
+        movie.rating_imdb = update.rating_imdb;
+      }
+      
+      // Update primary rating (fallback: TMDB -> IMDb -> Kinopoisk)
+      // Note: rating_tmdb is not stored separately, it's used to calculate primary rating
+      if (update.rating_tmdb !== undefined && update.rating_tmdb !== null) {
+        // TMDB has highest priority
+        movie.rating = update.rating_tmdb;
+      } else if (movie.rating_imdb !== undefined && movie.rating_imdb !== null) {
+        // IMDb is second priority
+        movie.rating = movie.rating_imdb;
+      } else if (movie.rating_kinopoisk !== undefined && movie.rating_kinopoisk !== null) {
+        // Kinopoisk is third priority
+        movie.rating = movie.rating_kinopoisk;
+      }
+      
+      // Trigger reactivity by reassigning the array
+      searchResults = [...searchResults];
+      
+      // Also update selectedMovie if it's the same movie
+      if (selectedMovie && selectedMovie.id === update.movie_id) {
+        selectedMovie = { ...selectedMovie, ...movie };
+      }
+      
+      console.log(`✅ Updated ratings for movie ${update.movie_id}:`, {
+        kinopoisk: movie.rating_kinopoisk,
+        imdb: movie.rating_imdb,
+        tmdb: update.rating_tmdb,
+        primary: movie.rating
+      });
+    } else {
+      console.warn(`⚠️ Movie with id ${update.movie_id} not found in searchResults`);
+    }
+  }
+
+  let ratingUpdateUnlisten: (() => void) | null = null;
+
+  onMount(async () => {
     // Listen for custom movie selection events
     document.addEventListener('movieSelect', handleMovieSelect as EventListener);
     
+    // Listen for rating-update events from Tauri
+    try {
+      console.log('🔍 Setting up rating-update event listener...');
+      const unlisten = await listen<{ movie_id: string; rating_kinopoisk?: number; rating_imdb?: number; rating_tmdb?: number }>('rating-update', (event) => {
+        console.log('🎯 EVENT RECEIVED in frontend:', event);
+        console.log('🎯 Event payload:', event.payload);
+        console.log('🎯 Event payload type:', typeof event.payload);
+        console.log('🎯 Event payload keys:', Object.keys(event.payload || {}));
+        handleRatingUpdate(event.payload);
+      });
+      ratingUpdateUnlisten = unlisten;
+      console.log('✅ Listening for rating-update events - listener is active');
+      console.log('✅ Unlisten function:', typeof unlisten);
+    } catch (error) {
+      console.error('❌ Failed to listen for rating-update events:', error);
+      console.error('❌ Error details:', JSON.stringify(error));
+    }
+    
     // Load initial feed
     loadFeed();
+  });
+
+  onDestroy(() => {
+    // Clean up event listeners
+    document.removeEventListener('movieSelect', handleMovieSelect as EventListener);
+    if (ratingUpdateUnlisten) {
+      ratingUpdateUnlisten();
+    }
   });
 </script>
 

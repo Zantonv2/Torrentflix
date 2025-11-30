@@ -1,1 +1,1 @@
-{}
+{"main-capability":{"identifier":"main-capability","description":"Main capability for the application","local":true,"windows":["main"],"permissions":["core:event:default","core:event:allow-listen","core:event:allow-unlisten","core:event:allow-emit","core:event:allow-emit-to"]}}

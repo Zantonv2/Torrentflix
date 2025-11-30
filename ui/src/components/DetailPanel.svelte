@@ -183,7 +183,7 @@
           <div class="space-y-6">
             <!-- Duration -->
             {#if hasRuntime}
-              <div>
+          <div>
                 <h3 class="text-sm font-semibold text-white/60 mb-1">Длительность</h3>
                 <div class="text-white">
                   {formatRuntime(movie?.runtime_minutes || 0)}

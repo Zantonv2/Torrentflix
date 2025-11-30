@@ -9,7 +9,9 @@ pub struct UiSearchResult {
     pub poster_url: Option<String>,
     pub backdrop_url: Option<String>,
     pub quality_badge: String, // "1080p", "4K", etc.
-    pub rating: Option<f32>,
+    pub rating: Option<f32>, // Primary rating (fallback: TMDB -> IMDb -> Kinopoisk)
+    pub rating_kinopoisk: Option<f32>,
+    pub rating_imdb: Option<f32>,
     pub runtime_minutes: Option<u32>,
     pub category: Option<String>,
     pub description: Option<String>,
@@ -53,25 +55,18 @@ impl UiSearchResult {
         Some(Self {
             id: result.enriched.parsed.identity_key(),
             title: result.enriched.parsed.title.clone(),
-            year: {
-                eprintln!("🎬 DTO: Year from parsed.media: {:?}", result.enriched.parsed.year);
-                result.enriched.parsed.year
-            },
+            year: result.enriched.parsed.year,
             poster_url: result.enriched.poster_url.clone(),
             backdrop_url: result.enriched.backdrop_url.clone(),
             quality_badge,
             rating: result.enriched.primary_rating(),
+            rating_kinopoisk: result.enriched.rating_kinopoisk,
+            rating_imdb: result.enriched.rating_imdb,
             runtime_minutes: result.enriched.runtime_minutes,
             category: best_quality.category.clone(),
             description: result.enriched.overview.clone(),
-            cast: {
-                eprintln!("🎬 DTO: Cast from enriched.media: {} members", result.enriched.cast.len());
-                result.enriched.cast.clone()
-            },
-            genres: {
-                eprintln!("🎬 DTO: Genres from enriched.media: {} genres", result.enriched.genres.len());
-                result.enriched.genres.clone()
-            },
+            cast: result.enriched.cast.clone(),
+            genres: result.enriched.genres.clone(),
             torrent_info: UiTorrentInfo {
                 seeders: best_quality.seeders,
                 size_gb: best_quality.size_bytes as f32 / (1024.0 * 1024.0 * 1024.0),

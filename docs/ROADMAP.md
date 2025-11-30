@@ -1,6 +1,6 @@
 # MovieDownloader — Architecture
 
-*Last updated: Nov 2025*
+*Last updated: Dec 2025*
 
 This document describes the **complete, replicable architecture** of MovieDownloader: a Tauri + Svelte UI with a pure‑Rust backend. It explains responsibilities, data flows, and step‑by‑step behavior for every component so a developer can reproduce or extend the system.
 
@@ -46,14 +46,20 @@ src-tauri/
   ├── commands/           # Tauri command handlers (thin)
   ├── engine/             # Core engine crate
   │   ├── indexers/       # adapter modules (auto-registered)
-  │   ├── normalize/      # guessit-rs integration
-  │   ├── metadata/       # TMDb, Kinopoisk, IMDb clients + cache
+  │   ├── normalize/      # guessit-rs integration + rating title normalization
+  │   ├── metadata/       # TMDb client + cache (Kinopoisk/IMDb moved to ratings/)
+  │   ├── ratings/        # ✅ Rating Manager + Kinopoisk/IMDb workers + cache
+  │   │   ├── manager.rs  # RatingManager (3 workers: Kinopoisk, TMDB metadata, IMDb scraper)
+  │   │   ├── kinopoisk.rs # Kinopoisk API client
+  │   │   ├── imdb.rs     # IMDb scraper
+  │   │   ├── models.rs   # Rating data structures
+  │   │   └── cache.rs    # In-memory rating cache
   │   ├── dedupe/         # deduplication rules & grouping
   │   ├── scoring/        # scoring model & weights
   │   ├── torrent/        # torrent actions & status polling
   │   ├── filesystem/     # atomic moves, renamer, hashing
   │   ├── library/        # DB access, library model
-  │   ├── jobs/           # scheduler & job queue
+  │   ├── jobs/           # ⏳ scheduler & job queue (future: persistent queue)
   │   └── config/         # config loader
   └── main.rs
 
@@ -103,9 +109,18 @@ docs/
 
 ### 6) Metadata Enrichment
 
-* Using parsed identity, call TMDb (primary), then Kinopoisk / IMDb for ratings where available.
+* ✅ **TMDb Client**: Integrated `tmdb_client` library for movie/TV show search, details, and external IDs.
+* ✅ **Rating Manager**: Implemented `RatingManager` with 3 workers:
+  - Kinopoisk Worker: Fetches ratings from Kinopoisk API
+  - TMDB Worker 1: Fetches metadata (episodes, seasons, external_id including imdb_id)
+  - TMDB Worker 2: IMDb scraper (depends on Worker 1, uses imdb_id)
+* ✅ **In-Memory Caching**: Cache-aware worker spawning to minimize API calls.
+* ✅ **Title Normalization**: Specialized `normalize_for_rating()` function for API requests (extracts year, season, series status).
+* ✅ **Engine Integration**: RatingManager automatically fetches missing ratings after metadata enrichment in all search methods.
+* ⏳ **UI Integration**: Trigger rating fetch on page load, show loading states, update UI with ratings.
+* ⏳ **Error Handling**: Retry logic with exponential backoff, rate limiting, detailed logging.
 * Cache metadata responses in memory + disk‑backed cache to minimize network calls.
-* Merge metadata with parsed results to produce `EnrichedMedia` records that contain posters, overview, runtime, cast, genres, and external IDs.
+* Merge metadata with parsed results to produce `EnrichedMedia` records that contain posters, overview, runtime, cast, genres, external IDs, and ratings.
 
 ### 7) Deduplication
 
@@ -142,6 +157,12 @@ docs/
 
 ### 13) Job Scheduler & Background Watchers
 
+* ✅ **RatingManager Architecture**: First worker manager implementation with immediate execution pattern.
+* ✅ **Job Manager Documentation**: Complete architecture spec (JOB_MANAGER.md) with migration path from immediate execution to persistent queue.
+* ✅ **Database Schema**: Job queue schema defined in DATABASE.md (jobs table with retries, dependencies, scheduling).
+* ⏳ **Unified JobManager**: Create `JobManager` structure to wrap `RatingManager` and future managers.
+* ⏳ **Persistent Job Queue**: Database-backed job persistence with retries, dependencies, scheduling.
+* ⏳ **Other Worker Managers**: DownloadManager, MetadataRefreshManager, LibrarySyncManager, FilesystemManager.
 * Runs periodic tasks (rescan library, re‑fetch metadata, check watchlist), and handles retries/backoffs for failed external calls.
 * Uses a persistent job queue for long‑running/important jobs so they survive restarts.
 
@@ -171,13 +192,32 @@ docs/
 5. ✅ **Implement YTS indexer** as a template adapter; test end‑to‑end search → normalization.
 6. ✅ **Implement MonnaIndexer**: Complete indexer with dynamic torrent extraction, metadata parsing, poster URL extraction, and full Netflix-style integration.
 7. ✅ **Add metadata clients**: Basic metadata structure with poster_url field support for UI integration.
-8. 🔄 **Implement Netflix-style UI components**: Complete component library including MovieGrid, MovieTile, SkeletonTile, LoadingDots, TopBar, TabBar, DetailPanel with full accessibility compliance.
-9. ⏳ **Add qBittorrent client adapter** and test add/pause/resume/status flows.
-10. ⏳ **Implement filesystem manager** with staging + atomic move + renamer driven by `ParsedMedia`.
-11. ⏳ **Wire library DB** (SQLite) and persist download results; expose library endpoints to UI via commands.
-12. ⏳ **Add job scheduler** and background watchers (rescan, watchlist scanning).
-13. ⏳ **Add notifications** and polish UI/UX.
-14. ⏳ **Harden**: add retries, circuit breakers, rate limits, logging, and tests.
+8. ✅ **Implement Rating Manager**: 
+   - Kinopoisk API client for rating fetching
+   - TMDB client integration (using `tmdb_client` library)
+   - IMDb scraper for ratings
+   - Title normalization for API requests
+   - In-memory caching system
+   - Engine integration (automatic rating fetch after metadata enrichment)
+9. ✅ **Job Manager Architecture**: Complete documentation (JOB_MANAGER.md) and database schema (DATABASE.md) for future persistent job queue.
+10. 🔄 **Implement Netflix-style UI components**: Complete component library including MovieGrid, MovieTile, SkeletonTile, LoadingDots, TopBar, TabBar, DetailPanel with full accessibility compliance.
+11. ⏳ **UI Rating Integration**: 
+    - Trigger rating fetch on page load
+    - Show loading states while fetching ratings
+    - Update UI with Kinopoisk/IMDb ratings
+    - Handle missing ratings gracefully
+12. ⏳ **Rating Manager Enhancements**:
+    - Retry logic with exponential backoff
+    - Rate limiting for API calls
+    - Detailed error logging and metrics
+13. ⏳ **Unified JobManager**: Create `JobManager` structure wrapping `RatingManager` and preparing for other worker managers.
+14. ⏳ **Add qBittorrent client adapter** and test add/pause/resume/status flows.
+15. ⏳ **Implement filesystem manager** with staging + atomic move + renamer driven by `ParsedMedia`.
+16. ⏳ **Wire library DB** (SQLite) and persist download results; expose library endpoints to UI via commands.
+17. ⏳ **Persistent Job Queue**: Implement database-backed job queue with retries, dependencies, scheduling.
+18. ⏳ **Other Worker Managers**: DownloadManager, MetadataRefreshManager, LibrarySyncManager, FilesystemManager.
+19. ⏳ **Add notifications** and polish UI/UX.
+20. ⏳ **Harden**: add retries, circuit breakers, rate limits, logging, and tests.
 
 ---
 
@@ -200,23 +240,80 @@ docs/
 
 ---
 
-## Recent work (Nov 2025) — debugged / further implementation
+## Recent work (Nov 2025) — completed & in progress
 
-- **Monna indexer (partially implemented)**
-  - Implemented DOM‑based genre parsing (info table inside `div.fullstory`) with regex fallback, wiring into `MonnaMetadata`.
-  - Started propagating `genres: Vec<String>` through `TorrentResult` (list + details flows).
-  - TODO / needs verification:
-    - Confirm `TorrentResult.genres` is filled correctly for all Monna search paths.
-    - Check multiple real Monna pages (different layouts / multiple genres) and adjust selectors if needed.
-    - Ensure `EnrichedMedia` / UI DTOs always carry the parsed genres.
+### ✅ Completed: Rating Manager System
 
-- **UI / Movie cards (partially implemented)**
-  - Card overlay: simplified Svelte markup to show only title, year, and a placeholder rating badge (for later TMDb integration).
-  - Detail modal: implemented layout to show description, cast, duration, seeds/leechers/size, download + bookmark buttons, backdrop image (when available), and genres as colored pill tags (red for horror / "ужасы", etc.).
-  - TODO / needs verification:
-    - Old overlay elements (GB + seeders row) still appear in current build → re‑run dev build and confirm only the new overlay is rendered.
-    - Verify `movie.genres` is actually populated from backend for Monna results (pill tags should appear).
-    - Wire real rating + backdrop from TMDb when metadata integration is ready.
+- **Rating Manager Implementation** (`engine/src/ratings/manager.rs`)
+  - ✅ Kinopoisk API client for fetching ratings from `kinopoiskapiunofficial.tech`
+  - ✅ TMDB client integration using `tmdb_client` library (v1.8.0)
+  - ✅ IMDb scraper that uses `imdb_id` from TMDB to fetch ratings
+  - ✅ Title normalization for API requests (`normalize_for_rating()`)
+    - Extracts year, season, series status from raw titles
+    - Cleans titles for API queries (handles "сериал" prefix, case normalization)
+  - ✅ In-memory caching system for ratings and metadata
+  - ✅ 3-worker architecture:
+    - Kinopoisk Worker (independent)
+    - TMDB Worker 1 (metadata: episodes, seasons, external_id)
+    - TMDB Worker 2 (IMDb scraper, depends on Worker 1)
+  - ✅ Engine integration: automatically fetches missing ratings after metadata enrichment
+  - ✅ Cache-aware worker spawning to minimize API calls
+
+- **Job Manager Architecture Documentation**
+  - ✅ Complete architecture spec (JOB_MANAGER.md)
+  - ✅ Database schema for job queue (DATABASE.md)
+  - ✅ Migration path from immediate execution to persistent queue
+  - ✅ Worker manager pattern documentation
+
+- **Dependencies & Upgrades**
+  - ✅ Upgraded `reqwest` to 0.12
+  - ✅ Upgraded `scraper` to 0.24
+  - ✅ Upgraded `sqlx` to 0.8
+  - ✅ Upgraded `thiserror` to 2.0
+  - ✅ Added `tmdb_client` library (git dependency)
+
+### ⏳ In Progress / TODO
+
+- **UI Rating Integration** (High Priority)
+  - ⏳ Trigger rating fetch on page load
+  - ⏳ Show loading states while fetching ratings
+  - ⏳ Update UI with Kinopoisk/IMDb ratings in MovieTile and MovieCard
+  - ⏳ Handle missing ratings gracefully (show "N/A" in yellow)
+
+- **Rating Manager Enhancements** (High Priority)
+  - ⏳ Retry logic with exponential backoff for failed API calls
+  - ⏳ Rate limiting for API calls (especially Kinopoisk and TMDB)
+  - ⏳ Detailed error logging and metrics tracking
+  - ⏳ Persistent cache (move from in-memory to database-backed)
+
+- **Unified JobManager** (Medium Priority)
+  - ⏳ Create `JobManager` structure wrapping `RatingManager`
+  - ⏳ Define `WorkerManager` trait for future managers
+  - ⏳ Prepare architecture for other worker managers
+
+- **Persistent Job Queue** (Future)
+  - ⏳ Implement database-backed job queue
+  - ⏳ Job scheduler with dependencies
+  - ⏳ Retry mechanism with backoff
+  - ⏳ Job history and observability
+
+- **Other Worker Managers** (Future)
+  - ⏳ DownloadManager - Torrent download coordination
+  - ⏳ MetadataRefreshManager - Periodic metadata updates
+  - ⏳ LibrarySyncManager - Library scanning and synchronization
+  - ⏳ FilesystemManager - File operations (moves, renames, cleanup)
+
+### Previous Work (Still Valid)
+
+- **Monna indexer**
+  - ✅ Implemented DOM‑based genre parsing with regex fallback
+  - ✅ Genres propagated through `TorrentResult` and `EnrichedMedia`
+  - ✅ Case normalization for genres and cast (title case)
+
+- **UI / Movie cards**
+  - ✅ Netflix-style UI components (MovieGrid, MovieTile, DetailPanel)
+  - ✅ Genres displayed as colored pill tags
+  - ⏳ Wire real ratings from RatingManager (in progress)
 
 
 ---

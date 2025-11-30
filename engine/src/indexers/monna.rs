@@ -245,7 +245,6 @@ impl MonnaIndexer {
     }
 
     fn parse_movie_list(&self, html: &str) -> Result<Vec<TorrentResult>> {
-        eprintln!("🔍 MonnaIndexer: parse_movie_list() called with {} chars", html.len());
         
         // This function needs to be async for metadata fetching
         // We'll handle this in the calling function
@@ -254,7 +253,6 @@ impl MonnaIndexer {
 
     /// Extract detail URLs from main page HTML (synchronous, no Send issues)
     fn extract_detail_urls(html: &str, base_url: &str) -> Vec<(String, &'static str)> {
-        eprintln!("🔍 MonnaIndexer: extract_detail_urls() called with {} chars", html.len());
         let document = Html::parse_document(html);
 
         // Use correct selectors from Python implementation
@@ -266,7 +264,6 @@ impl MonnaIndexer {
         // Find all article links (correct approach from Python)
         let article_links: Vec<_> = main_content.select(&ARTICLE_LINK_SELECTOR).collect();
         
-        eprintln!("🎯 MonnaIndexer: Found {} article links with selector 'a[href*=\".html\"]'", article_links.len());
         
         // Normalize Russian category names to English equivalents
         fn normalize_category(url: &str) -> Option<&'static str> {
@@ -318,24 +315,20 @@ impl MonnaIndexer {
                     continue;
                 }
                 
-                eprintln!("🔄 MonnaIndexer: Found valid link: {} (category: {:?})", full_url, category);
                 detail_urls.push((full_url, category.unwrap()));
             }
         }
         
-        eprintln!("🎉 MonnaIndexer: Extracted {} detail URLs from main page", detail_urls.len());
         detail_urls
     }
 
     /// Parse movie list and fetch metadata in parallel (async version)
     async fn parse_movie_list_with_metadata(&self, html: &str) -> Result<Vec<TorrentResult>> {
-        eprintln!("🔍 MonnaIndexer: parse_movie_list_with_metadata() called with {} chars", html.len());
         
         // Extract URLs synchronously (no Send issues)
         let detail_urls = Self::extract_detail_urls(html, &self.base_url);
         
         // All HTML parsing is complete, now we can safely use await points
-        eprintln!("📊 MonnaIndexer: Fetching {} detail pages in parallel", detail_urls.len());
         
         // Create semaphore to limit concurrent requests (like Python implementation)
         let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(10));
@@ -349,16 +342,13 @@ impl MonnaIndexer {
             let task = tokio::spawn(async move {
                 let _permit = semaphore.acquire().await.unwrap();
                 
-                eprintln!("🔄 MonnaIndexer: Fetching HTML from: {}", url);
                 
                 // Only fetch HTML in parallel (no parsing, no Send issues)
                 match Self::fetch_page_html(&client, &base_url, &url).await {
                     Ok(html) => {
-                        eprintln!("✅ MonnaIndexer: Got HTML from: {} ({} chars)", url, html.len());
                         Some((url, category, html))
                     }
                     Err(e) => {
-                        eprintln!("⚠️ MonnaIndexer: Failed to fetch HTML from {}: {}", url, e);
                         None
                     }
                 }
@@ -376,7 +366,6 @@ impl MonnaIndexer {
             if let Ok(Some((url, category, html))) = result {
                 match Self::parse_metadata_from_html(&html, &self.base_url) {
                     Ok(metadata) => {
-                        eprintln!("✅ MonnaIndexer: Parsed metadata for: {} (poster: {:?})", metadata.title, metadata.poster_url.is_some());
                         
                         // Create torrent result with metadata
                         let mut torrent_result = TorrentResult::new(
@@ -404,28 +393,22 @@ impl MonnaIndexer {
                         torrent_result.genres = metadata.genres.clone();
                         
                         if let Some(poster_url) = torrent_result.poster_url.as_ref() {
-                            eprintln!("🖼️ MonnaIndexer: Added poster URL: {}", poster_url);
                         }
                         if let Some(description) = torrent_result.description.as_ref() {
-                            eprintln!("📝 MonnaIndexer: Added description: {} chars", description.len());
                         }
                         if !torrent_result.cast.is_empty() {
-                            eprintln!("👥 MonnaIndexer: Added {} cast members", torrent_result.cast.len());
                         }
                         if let Some(runtime) = torrent_result.runtime_minutes {
-                            eprintln!("⏱️ MonnaIndexer: Added runtime: {} minutes", runtime);
                         }
                         
                         movies.push(torrent_result);
                     }
                     Err(e) => {
-                        eprintln!("⚠️ MonnaIndexer: Failed to parse metadata from {}: {}", url, e);
                     }
                 }
             }
         }
         
-        eprintln!("🎉 MonnaIndexer: Successfully parsed {} movies with metadata", movies.len());
         info!("Successfully parsed {} movies with metadata", movies.len());
         Ok(movies)
     }
@@ -542,7 +525,7 @@ impl MonnaIndexer {
                 description = WHITESPACE_REGEX.replace_all(&description, " ").to_string();
                 description = BR_REGEX.replace_all(&description, " ").to_string();
                 if !description.is_empty() && description.len() > 20 {
-                    metadata.description = Some(description);
+                metadata.description = Some(description);
                 }
             } else if let Some(desc_match) = DESCRIPTION_FALLBACK_REGEX.captures(&text) {
                 // Fallback: extract text after cast section
@@ -653,7 +636,6 @@ impl MonnaIndexer {
 
     /// Extract detailed metadata from a Monna2 detail page
     async fn fetch_movie_metadata(&self, detail_url: &str) -> Result<MonnaMetadata> {
-        eprintln!("🔍 MonnaIndexer: Fetching metadata from: {}", detail_url);
         
         let html = self.fetch_page(detail_url).await?;
         let document = Html::parse_document(&html);
@@ -726,7 +708,7 @@ impl MonnaIndexer {
                 description = WHITESPACE_REGEX.replace_all(&description, " ").to_string();
                 description = BR_REGEX.replace_all(&description, " ").to_string();
                 if !description.is_empty() && description.len() > 20 {
-                    metadata.description = Some(description);
+                metadata.description = Some(description);
                 }
             } else if let Some(desc_match) = DESCRIPTION_FALLBACK_REGEX.captures(&text) {
                 // Fallback: extract text after cast section
@@ -832,52 +814,40 @@ impl MonnaIndexer {
             }
         }
         
-        eprintln!("✅ MonnaIndexer: Extracted metadata for: {} (poster: {:?})", metadata.title, metadata.poster_url.is_some());
         Ok(metadata)
     }
 
     fn extract_movie_from_prewposter(&self, movie_elem: &scraper::ElementRef) -> Option<TorrentResult> {
-        eprintln!("🔍 Extraction: Starting extraction for movie element");
         
         // The <a> tag is the parent of div.prewposter, need to go up one level
         let parent = movie_elem.parent()?;
-        eprintln!("🔍 Extraction: Found first parent");
         
         let link_node = parent.parent()?;
-        eprintln!("🔍 Extraction: Found second parent (link node)");
         
         let link_elem = scraper::ElementRef::wrap(link_node)?;
-        eprintln!("🔍 Extraction: Wrapped link element");
         
         let href = link_elem.value().attr("href");
-        eprintln!("🔍 Extraction: Found href: {:?}", href);
         
         if href.is_none() {
-            eprintln!("❌ Extraction: FAILED - No href found");
             return None;
         }
         
         // Extract title from image alt text
         let img_elem = movie_elem.select(&Selector::parse("img").unwrap()).next();
-        eprintln!("🔍 Extraction: Found img element: {:?}", img_elem.is_some());
         
         if img_elem.is_none() {
-            eprintln!("❌ Extraction: FAILED - No img element found");
             return None;
         }
         
         let img_elem = img_elem.unwrap();
         let text: String = movie_elem.text().collect();
-        eprintln!("🔍 Extraction: Text content: '{}'", text.trim());
         
         let alt = img_elem.value().attr("alt");
-        eprintln!("🔍 Extraction: Alt text: {:?}", alt);
         
         let title = alt
             .unwrap_or(text.trim())
             .to_string();
             
-        eprintln!("✅ Extraction: Extracted title: '{}'", title);
         
         // Create basic torrent result with required fields
         let torrent_result = TorrentResult::new(
@@ -889,7 +859,6 @@ impl MonnaIndexer {
             "monna".to_string(),
         );
         
-        eprintln!("✅ Extraction: Created TorrentResult successfully");
         Some(torrent_result)
     }
 
@@ -950,20 +919,16 @@ impl Indexer for MonnaIndexer {
     }
 
     async fn get_feed(&self) -> Result<Vec<TorrentResult>> {
-        eprintln!("🎬 MonnaIndexer: get_feed() called");
         info!("🎬 Fetching movie feed from Monna2 main page with metadata");
         let html = self.fetch_page(&self.base_url).await?;
-        eprintln!("📄 MonnaIndexer: Fetched HTML length: {} chars", html.len());
         info!("📄 Fetched HTML length: {} chars", html.len());
         debug!("📄 HTML preview: {}", &html[..html.len().min(300)]);
         
         // Use the new parallel metadata fetching
         let movies = self.parse_movie_list_with_metadata(&html).await?;
-        eprintln!("🎬 MonnaIndexer: Parsed {} raw movies with metadata from Monna2", movies.len());
         info!("🎬 Parsed {} raw movies with metadata from Monna2", movies.len());
         
         for (i, movie) in movies.iter().enumerate().take(3) {
-            eprintln!("📽️ MonnaIndexer Movie {}: '{}' - {}", i, movie.title, movie.magnet_link);
             debug!("📽️ Movie {}: '{}' - {}", i, movie.title, movie.magnet_link);
         }
         

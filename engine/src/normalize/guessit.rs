@@ -19,7 +19,7 @@ impl GuessitNormalizer {
     }
 
     #[allow(dead_code)]
-    fn call_guessit(&self, title: &str) -> Result<GuessitResult> {
+    fn call_guessit(&self, _title: &str) -> Result<GuessitResult> {
         if !self.enabled {
             return Err(anyhow!("Guessit normalizer not enabled"));
         }

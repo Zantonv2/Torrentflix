@@ -80,9 +80,24 @@
           {/if}
           
           <!-- Rating -->
-          <div class="flex items-center">
-            <span class="text-yellow-400 mr-1">★</span>
-            <span class="text-yellow-400">{movie.rating ? movie.rating.toFixed(1) : 'N/A'}</span>
+          <div class="flex items-center gap-2 text-xs">
+            {#if movie.rating_kinopoisk || movie.rating_imdb}
+              <span class="text-yellow-400">⭐</span>
+              {#if movie.rating_kinopoisk}
+                <span class="text-yellow-400">KP: {movie.rating_kinopoisk.toFixed(1)}</span>
+              {/if}
+              {#if movie.rating_kinopoisk && movie.rating_imdb}
+                <span class="text-gray-400">|</span>
+              {/if}
+              {#if movie.rating_imdb}
+                <span class="text-yellow-400">IMDB: {movie.rating_imdb.toFixed(1)}</span>
+              {/if}
+            {:else if movie.rating}
+              <span class="text-yellow-400 mr-1">★</span>
+              <span class="text-yellow-400">{movie.rating.toFixed(1)}</span>
+            {:else}
+              <span class="text-gray-400">N/A</span>
+            {/if}
           </div>
           
           <!-- Placeholder for season info (will be implemented with TMDB integration) -->
@@ -141,8 +156,8 @@
           <div class="flex flex-wrap gap-2 mb-6">
             {#each (movie.genres || []) as genre}
               <span class={`px-3 py-1 text-xs font-medium rounded-full ${genreClass(genre)}`}>
-                {genre}
-              </span>
+                  {genre}
+                </span>
             {/each}
           </div>
         {/if}

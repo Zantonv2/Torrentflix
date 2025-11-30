@@ -92,17 +92,13 @@ impl Engine {
     pub fn set_rating_update_channel(&mut self, tx: mpsc::UnboundedSender<RatingUpdate>) {
         self.rating_update_tx = Some(tx.clone());
         
-        // Also set it on RatingManager if it exists
-        // Try to get mutable reference (will only work if we have exclusive access)
-        if let Some(ref mut rating_manager) = self.rating_manager {
-            if let Some(rating_manager_mut) = Arc::get_mut(rating_manager) {
-                rating_manager_mut.set_rating_update_channel(tx);
-                info!("Engine: ✅ Set rating update channel on existing RatingManager");
-            } else {
-                warn!("Engine: RatingManager is shared, channel stored but not set on RatingManager yet");
-                warn!("Engine: Channel will be used via stored reference in RatingManager");
-            }
+        // Also set it on RatingManager if it exists (now uses interior mutability, so no need for mutable reference)
+        if let Some(ref rating_manager) = self.rating_manager {
+            rating_manager.set_rating_update_channel(tx.clone());
+            eprintln!("🔵 Engine: ✅ Set rating update channel on existing RatingManager (via interior mutability)");
+            info!("Engine: ✅ Set rating update channel on existing RatingManager");
         } else {
+            eprintln!("🔵 Engine: RatingManager not created yet, channel will be set when RatingManager is initialized");
             info!("Engine: RatingManager not created yet, channel will be set when RatingManager is initialized");
         }
     }
@@ -180,21 +176,18 @@ impl Engine {
                 info!("Engine: RatingManager created successfully");
                 info!("Engine: Attaching database cache to RatingManager...");
             let rating_manager_with_db = rating_manager.with_db_cache(rating_cache_db);
-            let mut rating_manager_arc = Arc::new(rating_manager_with_db);
+            let rating_manager_arc = Arc::new(rating_manager_with_db);
             
-                // Store reference to RatingManager so we can set the channel later
-                self.rating_manager = Some(Arc::clone(&rating_manager_arc));
-                
-                // Set channel if it was already set (try to get mutable reference before cloning)
-                // We need to set it before storing the clone, so we can get a mutable reference
+                // Set channel if it was already set (now uses interior mutability, so no mutable reference needed)
                 if let Some(ref tx) = self.rating_update_tx {
-                    if let Some(rating_manager_mut) = Arc::get_mut(&mut rating_manager_arc) {
-                        rating_manager_mut.set_rating_update_channel(tx.clone());
-                        info!("Engine: ✅ Set rating update channel on RatingManager");
-                    }
+                    rating_manager_arc.set_rating_update_channel(tx.clone());
+                    eprintln!("🔵 Engine: ✅ Set rating update channel on RatingManager during initialization");
+                    info!("Engine: ✅ Set rating update channel on RatingManager during initialization");
+                } else {
+                    eprintln!("🔵 Engine: Rating update channel not set yet on Engine (will be set later)");
                 }
                 
-                // Now store the clone (this creates another reference, so we can't mutate after this)
+                // Now store the clone (after setting channel)
                 self.rating_manager = Some(Arc::clone(&rating_manager_arc));
                 
                 info!("Engine: Registering RatingManager as worker in JobManager...");
@@ -654,6 +647,26 @@ impl Engine {
             failed_indexers,
             normalizer_working,
         })
+    }
+
+    /// Clear all IMDb ratings from cache1
+    pub async fn clear_imdb_cache(&self) -> Result<usize> {
+        if let Some(ref rating_manager) = self.rating_manager {
+            rating_manager.clear_imdb_cache().await
+        } else {
+            warn!("Engine: RatingManager not initialized, cannot clear cache");
+            Ok(0)
+        }
+    }
+
+    /// Clear all ratings from cache
+    pub async fn clear_all_ratings_cache(&self) -> Result<usize> {
+        if let Some(ref rating_manager) = self.rating_manager {
+            rating_manager.clear_all_cache().await
+        } else {
+            warn!("Engine: RatingManager not initialized, cannot clear cache");
+            Ok(0)
+        }
     }
 }
 

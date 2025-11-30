@@ -1,4 +1,4 @@
-use tauri::{State, Manager};
+use tauri::State;
 use anyhow::Result;
 use tracing::{debug, info, error};
 
@@ -23,6 +23,11 @@ pub async fn search_movies(
     };
     
     // Perform search through engine
+    info!("═══════════════════════════════════════════════════════════");
+    info!("🔍 Tauri: search_movies command called from UI");
+    info!("🔍 Tauri: Query: '{}', Type: {:?}", request.query, media_type);
+    info!("🔍 Tauri: Calling engine.search_by_type()...");
+    
     match engine.search_by_type(&request.query, media_type).await {
         Ok(results) => {
             let took_ms = start_time.elapsed().as_millis() as u64;
@@ -54,7 +59,6 @@ pub async fn search_movies(
 /// Test command to verify IPC bridge works
 #[tauri::command]
 pub async fn test_connection() -> Result<String, String> {
-    eprintln!("🧪 Tauri: test_connection called - eprintln bypassing tracing");
     info!("🧪 Tauri: test_connection called");
     Ok("IPC bridge working!".to_string())
 }
@@ -64,8 +68,9 @@ pub async fn test_connection() -> Result<String, String> {
 pub async fn get_feed(
     engine: State<'_, Engine>,
 ) -> Result<UiSearchResponse, String> {
-    eprintln!("🎬 Tauri: get_feed command called - eprintln bypassing tracing");
-    info!("🎬 Tauri: get_feed command called");
+    info!("═══════════════════════════════════════════════════════════");
+    info!("🎬 Tauri: get_feed command called from UI");
+    info!("🎬 Tauri: Calling engine.get_feed()...");
     
     match engine.get_feed().await {
         Ok(results) => {
@@ -104,7 +109,7 @@ pub async fn get_feed(
 #[tauri::command]
 pub async fn get_magnet_link(
     result_id: String,
-    engine: State<'_, Engine>,
+    _engine: State<'_, Engine>,
 ) -> Result<String, String> {
     debug!("UI magnet request for: {}", result_id);
     
@@ -116,7 +121,7 @@ pub async fn get_magnet_link(
 /// Get engine health/status
 #[tauri::command]
 pub async fn get_engine_status(
-    engine: State<'_, Engine>,
+    _engine: State<'_, Engine>,
 ) -> Result<serde_json::Value, String> {
     debug!("UI status request");
     
@@ -129,4 +134,42 @@ pub async fn get_engine_status(
     });
     
     Ok(status)
+}
+
+/// Clear IMDb ratings from cache
+#[tauri::command]
+pub async fn clear_imdb_cache(
+    engine: State<'_, Engine>,
+) -> Result<usize, String> {
+    info!("🧹 Tauri: clear_imdb_cache command called");
+    
+    match engine.clear_imdb_cache().await {
+        Ok(count) => {
+            info!("✅ Cleared {} IMDb ratings from cache", count);
+            Ok(count)
+        }
+        Err(e) => {
+            error!("❌ Failed to clear IMDb cache: {}", e);
+            Err(format!("Failed to clear IMDb cache: {}", e))
+        }
+    }
+}
+
+/// Clear all ratings from cache
+#[tauri::command]
+pub async fn clear_all_ratings_cache(
+    engine: State<'_, Engine>,
+) -> Result<usize, String> {
+    info!("🧹 Tauri: clear_all_ratings_cache command called");
+    
+    match engine.clear_all_ratings_cache().await {
+        Ok(count) => {
+            info!("✅ Cleared {} ratings from cache", count);
+            Ok(count)
+        }
+        Err(e) => {
+            error!("❌ Failed to clear ratings cache: {}", e);
+            Err(format!("Failed to clear ratings cache: {}", e))
+        }
+    }
 }

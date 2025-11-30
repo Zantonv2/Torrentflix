@@ -7,13 +7,15 @@ pub mod scoring;
 pub mod torrent;
 pub mod filesystem;
 pub mod library;
+pub mod database;
 pub mod jobs;
 pub mod config;
 pub mod ui;
 pub mod engine;
+pub mod ratings;
 
 pub use models::*;
-pub use engine::Engine;
+pub use engine::{Engine, RatingUpdate};
 
 #[cfg(test)]
 mod tests {

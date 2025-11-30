@@ -18,7 +18,19 @@
     imageError = true;
   }
   
-  $: displayRating = movie.rating ? movie.rating.toFixed(1) : 'N/A';
+  $: displayRating = (() => {
+    const parts = [];
+    if (movie.rating_kinopoisk) {
+      parts.push(`KP: ${movie.rating_kinopoisk.toFixed(1)}`);
+    }
+    if (movie.rating_imdb) {
+      parts.push(`IMDB: ${movie.rating_imdb.toFixed(1)}`);
+    }
+    if (parts.length > 0) {
+      return parts.join(' | ');
+    }
+    return movie.rating ? movie.rating.toFixed(1) : 'N/A';
+  })();
   
 </script>
 
@@ -80,8 +92,15 @@
 
       <!-- Rating -->
       <div class="text-netflix-text-muted text-xs text-left line-clamp-1 flex items-center gap-1">
-        <span class="text-yellow-400">★</span>
-        <span class="text-yellow-400">{displayRating}</span>
+        {#if movie.rating_kinopoisk || movie.rating_imdb}
+          <span class="text-yellow-400">⭐</span>
+          <span class="text-yellow-400">{displayRating}</span>
+        {:else if movie.rating}
+          <span class="text-yellow-400">★</span>
+          <span class="text-yellow-400">{displayRating}</span>
+        {:else}
+          <span class="text-gray-400">N/A</span>
+        {/if}
       </div>
     </div>
   </button>

@@ -124,8 +124,12 @@ venv.bak/
 
 # Database files
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
 
 # Backup files
 *.bak
@@ -151,3 +155,6 @@ docs/site/
 # Local development
 .local/
 local/
+
+# Data directory (database files)
+.data/
