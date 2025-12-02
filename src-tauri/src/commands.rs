@@ -173,3 +173,101 @@ pub async fn clear_all_ratings_cache(
         }
     }
 }
+
+/// Start downloading a torrent
+#[tauri::command]
+pub async fn start_download(
+    magnet_link: String,
+    title: String,
+    engine: State<'_, Engine>,
+) -> Result<String, String> {
+    info!("📥 Tauri: start_download called for: {}", title);
+    
+    match engine.start_download(&magnet_link, &title).await {
+        Ok(hash) => {
+            info!("✅ Download started: {}", hash);
+            Ok(hash)
+        }
+        Err(e) => {
+            error!("❌ Failed to start download: {}", e);
+            Err(format!("Failed to start download: {}", e))
+        }
+    }
+}
+
+/// Get all active downloads
+#[tauri::command]
+pub async fn get_active_downloads(
+    engine: State<'_, Engine>,
+) -> Result<Vec<engine::models::DownloadStatus>, String> {
+    debug!("📊 Tauri: get_active_downloads called");
+    
+    match engine.get_active_downloads().await {
+        Ok(downloads) => Ok(downloads),
+        Err(e) => {
+            error!("❌ Failed to get downloads: {}", e);
+            Err(format!("Failed to get downloads: {}", e))
+        }
+    }
+}
+
+/// Pause a download
+#[tauri::command]
+pub async fn pause_download(
+    hash: String,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("⏸️ Tauri: pause_download called for: {}", hash);
+    
+    match engine.pause_download(&hash).await {
+        Ok(_) => {
+            info!("✅ Download paused: {}", hash);
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to pause download: {}", e);
+            Err(format!("Failed to pause download: {}", e))
+        }
+    }
+}
+
+/// Resume a download
+#[tauri::command]
+pub async fn resume_download(
+    hash: String,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("▶️ Tauri: resume_download called for: {}", hash);
+    
+    match engine.resume_download(&hash).await {
+        Ok(_) => {
+            info!("✅ Download resumed: {}", hash);
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to resume download: {}", e);
+            Err(format!("Failed to resume download: {}", e))
+        }
+    }
+}
+
+/// Delete a download
+#[tauri::command]
+pub async fn delete_download(
+    hash: String,
+    delete_files: bool,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("🗑️ Tauri: delete_download called for: {} (delete_files: {})", hash, delete_files);
+    
+    match engine.delete_download(&hash, delete_files).await {
+        Ok(_) => {
+            info!("✅ Download deleted: {}", hash);
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to delete download: {}", e);
+            Err(format!("Failed to delete download: {}", e))
+        }
+    }
+}

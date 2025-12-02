@@ -7,6 +7,7 @@
   import MovieGrid from './components/MovieGrid.svelte';
   import DetailPanel from './components/DetailPanel.svelte';
   import LoadingSpinner from './components/LoadingSpinner.svelte';
+  import DownloadsTab from './components/DownloadsTab.svelte';
   import type { UiSearchResult } from './types';
 
   let searchResults: UiSearchResult[] = [];
@@ -18,38 +19,36 @@
   let currentTab = 'feed';
   let isFeedView = true;
 
-  async function loadFeed() {
-    console.log('🎬 Starting feed load...');
-    
-    // First test if IPC bridge works at all
-    try {
-      console.log('🧪 Testing IPC bridge...');
-      const testResponse = await invoke('test_connection');
-      console.log('✅ IPC test result:', testResponse);
-    } catch (err) {
-      console.error('❌ IPC bridge broken:', err);
-      error = 'Мост IPC не работает';
-      isInitialLoading = false;
-      return;
-    }
-    
+  async function loadFeed(retryCount = 0) {
+    console.log('🎬 loadFeed() called, attempt:', retryCount + 1);
     isLoading = true;
     error = null;
     isFeedView = true;
     
     try {
-      console.log('📡 Calling invoke get_feed...');
+      console.log('📡 Calling invoke(get_feed)...');
       const response = await invoke('get_feed');
-      console.log('✅ Feed response received:', response);
+      console.log('✅ Feed response:', response);
       searchResults = (response as any).results || [];
-      console.log(`📊 Loaded ${searchResults.length} movies in feed`);
+      console.log('📊 Loaded', searchResults.length, 'results');
     } catch (err) {
-      console.error('❌ Feed load failed:', err);
+      console.error('❌ Feed error:', err);
+      
+      // Retry up to 3 times with exponential backoff
+      if (retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        setTimeout(() => loadFeed(retryCount + 1), delay);
+        return; // Don't set isLoading to false yet
+      }
+      
       error = err as string;
     } finally {
-      isLoading = false;
-      isInitialLoading = false;
-      console.log('🏁 Feed load completed, isLoading:', isLoading);
+      if (retryCount >= 3 || searchResults.length > 0) {
+        isLoading = false;
+        isInitialLoading = false;
+        console.log('🏁 loadFeed() complete, isLoading:', isLoading, 'isInitialLoading:', isInitialLoading);
+      }
     }
   }
 
@@ -89,7 +88,6 @@
 
   function handleTabChange(event: CustomEvent<string>) {
     currentTab = event.detail;
-    console.log('Tab changed to:', currentTab);
     
     // Load feed when switching back to feed tab
     if (currentTab === 'feed' && !isFeedView) {
@@ -97,8 +95,29 @@
     }
   }
 
-  function handleDownload(event: CustomEvent<UiSearchResult>) {
-    console.log('Download:', event.detail.title);
+  async function handleDownload(event: CustomEvent<UiSearchResult>) {
+    const movie = event.detail;
+    console.log('Download:', movie.title);
+    
+    if (!movie.torrent_info?.magnet_link) {
+      alert('Нет magnet-ссылки для этого фильма');
+      return;
+    }
+    
+    try {
+      const hash = await invoke('start_download', {
+        magnetLink: movie.torrent_info.magnet_link,
+        title: movie.title
+      });
+      console.log('✅ Download started:', hash);
+      alert(`Загрузка начата: ${movie.title}`);
+      
+      // Switch to downloads tab
+      currentTab = 'downloads';
+    } catch (err) {
+      console.error('❌ Download failed:', err);
+      alert(`Ошибка загрузки: ${err}`);
+    }
   }
 
   function handleBookmark(event: CustomEvent<UiSearchResult>) {
@@ -107,88 +126,68 @@
 
   function handleRatingUpdate(update: { movie_id: string; rating_kinopoisk?: number; rating_imdb?: number; rating_tmdb?: number }) {
     console.log('⭐ Rating update received:', update);
-    console.log('⭐ Current searchResults length:', searchResults.length);
-    console.log('⭐ Looking for movie_id:', update.movie_id);
-    console.log('⭐ Available movie IDs (first 10):', searchResults.map(m => m.id).slice(0, 10));
-    
-    // Find the movie in searchResults and update its ratings
     const movieIndex = searchResults.findIndex(m => m.id === update.movie_id);
-    console.log('⭐ Movie index found:', movieIndex);
     
     if (movieIndex === -1) {
-      console.warn(`⚠️ Movie with id "${update.movie_id}" not found in searchResults`);
-      console.warn('⚠️ Full list of IDs:', searchResults.map(m => `"${m.id}"`));
+      console.warn('⚠️ Movie not found:', update.movie_id);
       return;
     }
     
-    if (movieIndex !== -1) {
-      const movie = searchResults[movieIndex];
-      
-      // Update individual ratings
-      if (update.rating_kinopoisk !== undefined) {
-        movie.rating_kinopoisk = update.rating_kinopoisk;
-      }
-      if (update.rating_imdb !== undefined) {
-        movie.rating_imdb = update.rating_imdb;
-      }
-      
-      // Update primary rating (fallback: TMDB -> IMDb -> Kinopoisk)
-      // Note: rating_tmdb is not stored separately, it's used to calculate primary rating
-      if (update.rating_tmdb !== undefined && update.rating_tmdb !== null) {
-        // TMDB has highest priority
-        movie.rating = update.rating_tmdb;
-      } else if (movie.rating_imdb !== undefined && movie.rating_imdb !== null) {
-        // IMDb is second priority
-        movie.rating = movie.rating_imdb;
-      } else if (movie.rating_kinopoisk !== undefined && movie.rating_kinopoisk !== null) {
-        // Kinopoisk is third priority
-        movie.rating = movie.rating_kinopoisk;
-      }
-      
-      // Trigger reactivity by reassigning the array
-      searchResults = [...searchResults];
-      
-      // Also update selectedMovie if it's the same movie
-      if (selectedMovie && selectedMovie.id === update.movie_id) {
-        selectedMovie = { ...selectedMovie, ...movie };
-      }
-      
-      console.log(`✅ Updated ratings for movie ${update.movie_id}:`, {
-        kinopoisk: movie.rating_kinopoisk,
-        imdb: movie.rating_imdb,
-        tmdb: update.rating_tmdb,
-        primary: movie.rating
-      });
-    } else {
-      console.warn(`⚠️ Movie with id ${update.movie_id} not found in searchResults`);
+    const movie = searchResults[movieIndex];
+    console.log('📝 Before update:', { 
+      title: movie.title, 
+      kp: movie.rating_kinopoisk, 
+      imdb: movie.rating_imdb, 
+      rating: movie.rating 
+    });
+    
+    // Update ratings
+    if (update.rating_kinopoisk !== undefined) {
+      movie.rating_kinopoisk = update.rating_kinopoisk;
+    }
+    if (update.rating_imdb !== undefined) {
+      movie.rating_imdb = update.rating_imdb;
+    }
+    
+    // Update primary rating (prefer TMDB > IMDb > Kinopoisk)
+    if (update.rating_tmdb !== undefined && update.rating_tmdb !== null && update.rating_tmdb > 0) {
+      movie.rating = update.rating_tmdb;
+    } else if (movie.rating_imdb !== undefined && movie.rating_imdb !== null) {
+      movie.rating = movie.rating_imdb;
+    } else if (movie.rating_kinopoisk !== undefined && movie.rating_kinopoisk !== null) {
+      movie.rating = movie.rating_kinopoisk;
+    }
+    
+    console.log('✅ After update:', { 
+      title: movie.title, 
+      kp: movie.rating_kinopoisk, 
+      imdb: movie.rating_imdb, 
+      rating: movie.rating 
+    });
+    
+    // Trigger Svelte reactivity
+    searchResults = [...searchResults];
+    
+    // Update selectedMovie if needed
+    if (selectedMovie && selectedMovie.id === update.movie_id) {
+      selectedMovie = { ...selectedMovie, ...movie };
     }
   }
 
   let ratingUpdateUnlisten: (() => void) | null = null;
 
   onMount(async () => {
-    // Listen for custom movie selection events
     document.addEventListener('movieSelect', handleMovieSelect as EventListener);
     
-    // Listen for rating-update events from Tauri
     try {
-      console.log('🔍 Setting up rating-update event listener...');
       const unlisten = await listen<{ movie_id: string; rating_kinopoisk?: number; rating_imdb?: number; rating_tmdb?: number }>('rating-update', (event) => {
-        console.log('🎯 EVENT RECEIVED in frontend:', event);
-        console.log('🎯 Event payload:', event.payload);
-        console.log('🎯 Event payload type:', typeof event.payload);
-        console.log('🎯 Event payload keys:', Object.keys(event.payload || {}));
         handleRatingUpdate(event.payload);
       });
       ratingUpdateUnlisten = unlisten;
-      console.log('✅ Listening for rating-update events - listener is active');
-      console.log('✅ Unlisten function:', typeof unlisten);
     } catch (error) {
-      console.error('❌ Failed to listen for rating-update events:', error);
-      console.error('❌ Error details:', JSON.stringify(error));
+      console.error('Failed to listen for rating-update events:', error);
     }
     
-    // Load initial feed
     loadFeed();
   });
 
@@ -203,7 +202,6 @@
 
 <div class="flex flex-col bg-netflix-dark-bg" style="height: 100vh; overflow: hidden;">
   {#if isInitialLoading}
-    <!-- Initial loading state - prevents white screen -->
     <div class="flex items-center justify-center h-screen bg-netflix-dark-bg">
       <LoadingSpinner />
     </div>
@@ -218,42 +216,56 @@
       <div class="flex-1 flex flex-col overflow-hidden" style="min-height: 0;">
         <TabBar currentTab={currentTab} on:tabChange={handleTabChange} />
         
-        {#if isLoading && searchResults.length === 0}
-          <MovieGrid movies={[]} loading={true} on:movieSelect={handleMovieSelect} />
-        {:else if error}
-          <div class="flex-1 flex items-center justify-center overflow-y-auto">
-            <div class="text-center py-12">
-              <div class="text-netflix-red text-lg mb-4">
-                {isFeedView ? 'Ошибка загрузки ленты' : 'Ошибка поиска'}
-              </div>
-              <div class="text-netflix-light">{error}</div>
-              <button 
-                class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
-                on:click={() => isFeedView ? loadFeed() : handleSearch(searchQuery)}
-              >
-                Повторить
-              </button>
-            </div>
-          </div>
-        {:else if searchResults.length === 0}
-          <div class="flex-1 flex items-center justify-center overflow-y-auto">
-            <div class="text-center py-12">
-              <div class="text-netflix-light text-lg mb-4">
-                {isFeedView ? 'Нет фильмов в ленте' : (searchQuery ? 'Ничего не найдено' : 'Начните поиск фильмов')}
-              </div>
-              {#if searchQuery && !isFeedView}
-                <div class="text-sm text-gray-500">
-                  Попробуйте другие ключевые слова или проверьте правописание
+        <!-- Simple switch based on currentTab only -->
+        {#if currentTab === 'downloads'}
+          <DownloadsTab />
+        {:else if currentTab === 'feed'}
+          {#if isLoading && searchResults.length === 0}
+            <MovieGrid movies={[]} loading={true} on:movieSelect={handleMovieSelect} />
+          {:else if error}
+            <div class="flex-1 flex items-center justify-center overflow-y-auto">
+              <div class="text-center py-12">
+                <div class="text-netflix-red text-lg mb-4">
+                  {searchQuery ? 'Ошибка поиска' : 'Ошибка загрузки ленты'}
                 </div>
-              {:else if isFeedView}
-                <div class="text-sm text-gray-500">
-                  Проверьте подключение или попробуйте позже
-                </div>
-              {/if}
+                <div class="text-netflix-light">{error}</div>
+                <button 
+                  class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
+                  on:click={() => searchQuery ? handleSearch(searchQuery) : loadFeed()}
+                >
+                  Повторить
+                </button>
+              </div>
             </div>
-          </div>
+          {:else if searchResults.length === 0}
+            <div class="flex-1 flex items-center justify-center overflow-y-auto">
+              <div class="text-center py-12">
+                <div class="text-netflix-light text-lg mb-4">
+                  {searchQuery ? 'Ничего не найдено' : 'Нет фильмов в ленте'}
+                </div>
+                {#if searchQuery}
+                  <div class="text-sm text-gray-500">
+                    Попробуйте другие ключевые слова или проверьте правописание
+                  </div>
+                {:else}
+                  <div class="text-sm text-gray-500">
+                    Проверьте подключение или попробуйте позже
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {:else}
+            <MovieGrid movies={searchResults} loading={isLoading} on:movieSelect={handleMovieSelect} />
+          {/if}
         {:else}
-          <MovieGrid movies={searchResults} loading={isLoading} on:movieSelect={handleMovieSelect} />
+          <!-- Other tabs -->
+          <div class="flex-1 flex items-center justify-center">
+            <div class="text-center py-12">
+              <div class="text-6xl mb-4">🚧</div>
+              <p class="text-xl text-gray-400 mb-2">В разработке</p>
+              <p class="text-sm text-gray-500">Эта вкладка скоро будет готова</p>
+            </div>
+          </div>
         {/if}
       </div>
 

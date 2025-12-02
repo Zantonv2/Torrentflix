@@ -5,9 +5,12 @@
   const dispatch = createEventDispatcher();
 
   $: tabs = [
+    { id: 'library', label: '📚 Библиотека' },
     { id: 'history', label: '📋 История' },
     { id: 'feed', label: '🎬 Лента' },
     { id: 'bookmarks', label: '⭐ Закладки' },
+    { id: 'downloads', label: '📥 Загрузки' },
+    { id: 'settings', label: '⚙️ Настройки' },
   ];
 
   let bookmarkBadge = 0;

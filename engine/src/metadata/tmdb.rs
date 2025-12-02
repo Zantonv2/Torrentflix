@@ -154,12 +154,41 @@ impl TmdbClient {
         let mut client_builder = Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
         
-        // Configure SOCKS5 proxy if available (using socks5h for DNS resolution through proxy)
+        // Configure SOCKS5 proxy explicitly from ADDRESS_PORT
+        // Note: reqwest's "socks" feature supports both socks5:// and socks5h://
+        // socks5h:// routes DNS through the proxy (recommended)
+        // Debug: Check all environment variables
+        eprintln!("🔵 TMDB Client: Checking for ADDRESS_PORT...");
+        eprintln!("🔵 TMDB Client: Current working directory: {:?}", std::env::current_dir().ok());
         if let Ok(proxy_url) = std::env::var("ADDRESS_PORT") {
+            eprintln!("🔵 TMDB Client: ✅ ADDRESS_PORT found: {}", proxy_url);
+            // Try socks5h first (DNS through proxy), fallback to socks5 if needed
             let socks5h_url = format!("socks5h://{}", proxy_url);
-            if let Ok(proxy) = reqwest::Proxy::all(&socks5h_url) {
-                client_builder = client_builder.proxy(proxy);
+            eprintln!("🔵 TMDB Client: Attempting to configure proxy: {}", socks5h_url);
+            
+            // For SOCKS5, we need to use Proxy::all() which works for both HTTP and HTTPS
+            match reqwest::Proxy::all(&socks5h_url) {
+                Ok(proxy) => {
+                    client_builder = client_builder.proxy(proxy);
+                    eprintln!("🔵 TMDB Client: ✅ Proxy configured successfully with socks5h://");
+                }
+                Err(e) => {
+                    eprintln!("🔵 TMDB Client: ⚠️ socks5h:// failed: {}, trying socks5://", e);
+                    // Fallback to socks5:// (DNS not through proxy)
+                    let socks5_url = format!("socks5://{}", proxy_url);
+                    match reqwest::Proxy::all(&socks5_url) {
+                        Ok(proxy) => {
+                            client_builder = client_builder.proxy(proxy);
+                            eprintln!("🔵 TMDB Client: ✅ Proxy configured with socks5://");
+                        }
+                        Err(e2) => {
+                            eprintln!("🔵 TMDB Client: ❌ Both proxy formats failed. socks5h error: {}, socks5 error: {}", e, e2);
+                        }
+                    }
+                }
             }
+        } else {
+            eprintln!("🔵 TMDB Client: No ADDRESS_PORT found, not using proxy");
         }
         
         let client = client_builder
@@ -391,6 +420,7 @@ impl MetadataProvider for TmdbClient {
                     ("language".to_string(), "ru-RU".to_string()), // Prioritize Russian metadata
                 ];
                 
+                // First try with year if provided
                 if let Some(year_val) = year {
                     query_pairs.push(("year".to_string(), year_val.to_string()));
                 }
@@ -411,14 +441,48 @@ impl MetadataProvider for TmdbClient {
                 let search_response: TmdbSearchResponse<TmdbMovieObject> = response.json().await
                     .map_err(|e| anyhow!("Failed to parse response: {:?}", e))?;
 
-                if let Some(movies) = search_response.results {
+                let mut results = if let Some(movies) = search_response.results {
                     movies
                         .into_iter()
                         .map(|m| Self::convert_movie_to_search_result(m, &image_base_url))
                         .collect()
                 } else {
                     Vec::new()
+                };
+                
+                // If no results with year filter, try without year as fallback
+                if results.is_empty() && year.is_some() {
+                    debug!("No results with year filter, trying without year for: {}", title);
+                    let mut query_pairs_no_year: Vec<(String, String)> = vec![
+                        ("api_key".to_string(), api_key.clone()),
+                        ("query".to_string(), title.to_string()),
+                        ("page".to_string(), "1".to_string()),
+                        ("language".to_string(), "ru-RU".to_string()),
+                    ];
+                    
+                    let response = self.client
+                        .get(url)
+                        .query(&query_pairs_no_year.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>())
+                        .send()
+                        .await
+                        .ok();
+                    
+                    if let Some(resp) = response {
+                        if resp.status().is_success() {
+                            if let Ok(search_response) = resp.json::<TmdbSearchResponse<TmdbMovieObject>>().await {
+                                if let Some(movies) = search_response.results {
+                                    results = movies
+                                        .into_iter()
+                                        .map(|m| Self::convert_movie_to_search_result(m, &image_base_url))
+                                        .collect();
+                                    debug!("Found {} results without year filter for: {}", results.len(), title);
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                results
             }
             MediaType::Series => {
                 let url = "https://api.themoviedb.org/3/search/tv";
@@ -449,14 +513,48 @@ impl MetadataProvider for TmdbClient {
                 let search_response: TmdbSearchResponse<TmdbTvObject> = response.json().await
                     .map_err(|e| anyhow!("Failed to parse response: {:?}", e))?;
 
-                if let Some(tv_shows) = search_response.results {
+                let mut results = if let Some(tv_shows) = search_response.results {
                     tv_shows
                         .into_iter()
                         .map(|t| Self::convert_tv_to_search_result(t, &image_base_url))
                         .collect()
                 } else {
                     Vec::new()
+                };
+                
+                // If no results with year filter, try without year as fallback
+                if results.is_empty() && year.is_some() {
+                    debug!("No results with year filter, trying without year for: {}", title);
+                    let mut query_pairs_no_year: Vec<(String, String)> = vec![
+                        ("api_key".to_string(), api_key.clone()),
+                        ("query".to_string(), title.to_string()),
+                        ("page".to_string(), "1".to_string()),
+                        ("language".to_string(), "ru-RU".to_string()),
+                    ];
+                    
+                    let response = self.client
+                        .get(url)
+                        .query(&query_pairs_no_year.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect::<Vec<_>>())
+                        .send()
+                        .await
+                        .ok();
+                    
+                    if let Some(resp) = response {
+                        if resp.status().is_success() {
+                            if let Ok(search_response) = resp.json::<TmdbSearchResponse<TmdbTvObject>>().await {
+                                if let Some(tv_shows) = search_response.results {
+                                    results = tv_shows
+                                        .into_iter()
+                                        .map(|t| Self::convert_tv_to_search_result(t, &image_base_url))
+                                        .collect();
+                                    debug!("Found {} results without year filter for: {}", results.len(), title);
+                                }
+                            }
+                        }
+                    }
                 }
+                
+                results
             }
             _ => Vec::new(),
         };

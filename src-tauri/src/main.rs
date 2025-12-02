@@ -31,22 +31,31 @@ async fn main() {
     let mut env_loaded = false;
     for path in &env_paths {
         if let Ok(_) = dotenvy::from_filename(path) {
+            eprintln!("✅ Loaded .env from: {}", path);
             env_loaded = true;
+            // Verify ADDRESS_PORT is loaded
+            if let Ok(addr) = std::env::var("ADDRESS_PORT") {
+                eprintln!("✅ ADDRESS_PORT is set: {}", addr);
+            } else {
+                eprintln!("⚠️ ADDRESS_PORT not found in environment after loading {}", path);
+            }
             break;
         }
     }
     
     if !env_loaded {
+        eprintln!("⚠️ No .env file found in any of the checked paths, trying dotenv()");
         dotenvy::dotenv().ok();
+        if let Ok(addr) = std::env::var("ADDRESS_PORT") {
+            eprintln!("✅ ADDRESS_PORT found after dotenv(): {}", addr);
+        } else {
+            eprintln!("❌ ADDRESS_PORT still not found after dotenv()");
+        }
     }
 
-    // Configure proxy environment variables for HTTP clients
-    if let Ok(proxy_url) = std::env::var("ADDRESS_PORT") {
-        let socks5_url = format!("socks5://{}", proxy_url);
-        std::env::set_var("ALL_PROXY", &socks5_url);
-        std::env::set_var("HTTP_PROXY", &socks5_url);
-        std::env::set_var("HTTPS_PROXY", &socks5_url);
-    }
+    // Note: Proxy configuration is handled directly in each HTTP client (e.g., TmdbClient)
+    // We don't set ALL_PROXY/HTTP_PROXY/HTTPS_PROXY here to avoid conflicts with direct proxy configuration
+    // Each client that needs a proxy should read ADDRESS_PORT and configure it explicitly
 
     // Initialize logging
     tracing_subscriber::fmt::init();
@@ -97,7 +106,12 @@ async fn main() {
             commands::get_engine_status,
             commands::test_connection,
             commands::clear_imdb_cache,
-            commands::clear_all_ratings_cache
+            commands::clear_all_ratings_cache,
+            commands::start_download,
+            commands::get_active_downloads,
+            commands::pause_download,
+            commands::resume_download,
+            commands::delete_download
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

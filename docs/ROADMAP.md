@@ -240,80 +240,314 @@ docs/
 
 ---
 
-## Recent work (Nov 2025) — completed & in progress
+## 📊 Project Status (December 2025)
 
-### ✅ Completed: Rating Manager System
+**ACTUAL Completion**: ~50% | **Production Ready**: ❌ Not Yet (But Getting Close!)
 
-- **Rating Manager Implementation** (`engine/src/ratings/manager.rs`)
-  - ✅ Kinopoisk API client for fetching ratings from `kinopoiskapiunofficial.tech`
-  - ✅ TMDB client integration using `tmdb_client` library (v1.8.0)
-  - ✅ IMDb scraper that uses `imdb_id` from TMDB to fetch ratings
-  - ✅ Title normalization for API requests (`normalize_for_rating()`)
-    - Extracts year, season, series status from raw titles
-    - Cleans titles for API queries (handles "сериал" prefix, case normalization)
-  - ✅ In-memory caching system for ratings and metadata
-  - ✅ 3-worker architecture:
-    - Kinopoisk Worker (independent)
-    - TMDB Worker 1 (metadata: episodes, seasons, external_id)
-    - TMDB Worker 2 (IMDb scraper, depends on Worker 1)
-  - ✅ Engine integration: automatically fetches missing ratings after metadata enrichment
-  - ✅ Cache-aware worker spawning to minimize API calls
+### ✅ What's Working (Completed Features)
 
-- **Job Manager Architecture Documentation**
-  - ✅ Complete architecture spec (JOB_MANAGER.md)
-  - ✅ Database schema for job queue (DATABASE.md)
-  - ✅ Migration path from immediate execution to persistent queue
-  - ✅ Worker manager pattern documentation
+#### Core Search & Discovery
+- ✅ Multi-indexer search (Monna2, YTS) with parallel execution
+- ✅ Advanced title normalization (pattern-based guessit-rs port)
+- ✅ TMDB metadata enrichment (posters, descriptions, cast, genres)
+- ✅ Deduplication and quality scoring
+- ✅ Netflix-style UI with 5x2 grid layout
+- ✅ Skeleton loading states and WCAG AA accessibility
 
-- **Dependencies & Upgrades**
-  - ✅ Upgraded `reqwest` to 0.12
-  - ✅ Upgraded `scraper` to 0.24
-  - ✅ Upgraded `sqlx` to 0.8
-  - ✅ Upgraded `thiserror` to 2.0
-  - ✅ Added `tmdb_client` library (git dependency)
+#### Rating System (Best-in-Class)
+- ✅ Multi-source rating aggregation (Kinopoisk + IMDb + TMDB)
+- ✅ 3-worker architecture with dependency management
+- ✅ Dual-layer caching (in-memory + SQLite)
+- ✅ Real-time UI updates via Tauri events
+- ✅ Graceful degradation (works without optional API keys)
+- ✅ Cache-aware worker spawning
 
-### ⏳ In Progress / TODO
+#### Download Management (Backend Complete)
+- ✅ qBittorrent WebAPI client (login, add, pause, resume, delete)
+- ✅ Get download status (progress, speed, ETA, seeders, leechers)
+- ✅ Get all active downloads
+- ✅ Tauri commands registered
+- ✅ Engine integration with environment config
+- ✅ Tested and working (see DOWNLOAD_IMPLEMENTATION_PROOF.md)
 
-- **UI Rating Integration** (High Priority)
-  - ⏳ Trigger rating fetch on page load
-  - ⏳ Show loading states while fetching ratings
-  - ⏳ Update UI with Kinopoisk/IMDb ratings in MovieTile and MovieCard
-  - ⏳ Handle missing ratings gracefully (show "N/A" in yellow)
+#### Infrastructure
+- ✅ Tokio async runtime with workspace dependencies
+- ✅ SQLite database with WAL mode
+- ✅ Tauri 2.0 desktop wrapper
+- ✅ Comprehensive documentation (5 spec documents)
 
-- **Rating Manager Enhancements** (High Priority)
-  - ⏳ Retry logic with exponential backoff for failed API calls
-  - ⏳ Rate limiting for API calls (especially Kinopoisk and TMDB)
-  - ⏳ Detailed error logging and metrics tracking
-  - ⏳ Persistent cache (move from in-memory to database-backed)
+### 🚨 What's Actually Missing (Stop Lying to Yourself)
 
-- **Unified JobManager** (Medium Priority)
-  - ⏳ Create `JobManager` structure wrapping `RatingManager`
-  - ⏳ Define `WorkerManager` trait for future managers
-  - ⏳ Prepare architecture for other worker managers
+#### 1. Download Management ✅ **BACKEND DONE** | ⏳ **UI PENDING**
+**Reality**: Backend fully implemented and tested! qBittorrent client works.
 
-- **Persistent Job Queue** (Future)
-  - ⏳ Implement database-backed job queue
-  - ⏳ Job scheduler with dependencies
-  - ⏳ Retry mechanism with backoff
-  - ⏳ Job history and observability
+**What exists**: 
+- ✅ qBittorrent WebAPI client (250 lines, tested)
+- ✅ Download commands (start, pause, resume, delete, get_all)
+- ✅ Engine integration with env config
+- ❌ Downloads UI tab (not built yet)
 
-- **Other Worker Managers** (Future)
-  - ⏳ DownloadManager - Torrent download coordination
-  - ⏳ MetadataRefreshManager - Periodic metadata updates
-  - ⏳ LibrarySyncManager - Library scanning and synchronization
-  - ⏳ FilesystemManager - File operations (moves, renames, cleanup)
+**Effort**: 2-3 hours for UI
 
-### Previous Work (Still Valid)
+#### 2. Library Management ❌ **5% COMPLETE**
+**Reality**: Database schema exists. That's it. No scanning, no tracking, no UI.
 
-- **Monna indexer**
-  - ✅ Implemented DOM‑based genre parsing with regex fallback
-  - ✅ Genres propagated through `TorrentResult` and `EnrichedMedia`
-  - ✅ Case normalization for genres and cast (title case)
+**What exists**: SQL schema in docs
+**What's needed**: Everything else
+- File scanner (doesn't exist)
+- Database operations (doesn't exist)
+- Watch history (doesn't exist)
+- Library UI (doesn't exist)
 
-- **UI / Movie cards**
-  - ✅ Netflix-style UI components (MovieGrid, MovieTile, DetailPanel)
-  - ✅ Genres displayed as colored pill tags
-  - ⏳ Wire real ratings from RatingManager (in progress)
+**Effort**: 3-4 days of actual work
 
+#### 3. Bookmarks (Wishlist) ❌ **0% COMPLETE**
+**Purpose**: Bookmark movies that DON'T EXIST YET on indexers. Wait for them to appear with specific quality preferences.
+
+**Features**:
+- Bookmark movie with quality filters:
+  - **Quality**: 480p, 720p, 1080p, 2160p (4K), etc.
+  - **Source**: WEBRip, WEB-DL, BluRay, HDTV, etc.
+  - **Audio**: DTS, AC3, Dolby Atmos, AAC, etc.
+- Auto-notify when movie appears matching filters
+- Parse quality/source/audio from torrent name (using normalizer)
+- Show bookmark count badge on tab
+
+**What's needed**:
+- Bookmarks database table
+- Bookmark CRUD operations
+- Quality filter UI
+- Indexer monitoring (check bookmarks periodically)
+- Notifications when match found
+- BookmarksTab.svelte component
+
+**Effort**: 2-3 days
+
+#### 4. History (Analytics) ❌ **0% COMPLETE**
+**Purpose**: Download statistics and analytics. Show user preferences and download history.
+
+**Features**:
+- **Statistics Dashboard**:
+  - Preferred quality (most downloaded: 1080p, 720p, etc.)
+  - Preferred genres (Action, Drama, etc.)
+  - Preferred years (2020s, 2010s, etc.)
+  - Total GB downloaded
+  - Download count by month/year
+  - Charts and graphs
+- **Download History**:
+  - List of all downloaded movies
+  - Show parsed metadata (quality, source, audio)
+  - Show download date, size
+  - Filter by quality/genre/year
+  - Search history
+
+**What's needed**:
+- Download history database table
+- Track downloads with parsed metadata
+- Statistics aggregation queries
+- Charts library (Chart.js or similar)
+- HistoryTab.svelte component
+
+**Effort**: 2-3 days
+
+#### 5. Settings UI ❌ **0% COMPLETE**
+**Reality**: No settings UI. No settings persistence. Users edit .env files like cavemen.
+
+**What exists**: Nothing
+**What's needed**: Everything
+- Settings database table
+- Settings CRUD operations
+- SettingsTab.svelte component
+- API key management (TMDB, Kinopoisk)
+- qBittorrent connection config
+- Library/download paths
+- Indexer enable/disable
+
+**Effort**: 1-2 days
+
+#### 6. Job Queue ❌ **10% COMPLETE**
+**Reality**: "JobManager" is just a wrapper that calls RatingManager immediately. No persistence, no retries, no scheduling.
+
+**What exists**: Architecture docs (beautiful fiction)
+**What's needed**: Actual implementation
+
+**Effort**: 3-4 days of actual work
+
+### ⏳ Planned Features (Roadmap)
+
+See **[GRAND_PLAN.md](./GRAND_PLAN.md)** for complete 4-month development plan.
+
+**Phase 1** (Month 1): Critical features - Download, Library, Settings
+**Phase 2** (Month 2): UX enhancements - Search, Shortcuts, Notifications
+**Phase 3** (Month 3): Reliability - Job queue, Testing, Performance
+**Phase 4** (Month 4): Advanced - Watchlist, Auto-download, Smart cleanup
+**Phase 5** (Month 4): Polish - Statistics, Themes, Backup
+
+### 📈 Recent Achievements (November 2025)
+
+- ✅ Implemented complete rating aggregation system
+- ✅ Added real-time rating updates to UI
+- ✅ Created comprehensive documentation suite
+- ✅ Upgraded all dependencies to latest versions
+- ✅ Established job manager architecture
+
+### 🎯 Next Immediate Steps
+
+1. **This Week**: Downloads UI tab (2-3 hours) - **HIGHEST PRIORITY**
+2. **Next Week**: Library management (file scanning, database, UI)
+3. **Week 3**: Bookmarks system (wishlist with quality filters)
+4. **Week 4**: History/Analytics tab + Settings UI
+
+**Goal**: Ship functional v1.0 with all 6 tabs by end of Month 1
+
+---
+
+## 📑 Complete Tab Structure
+
+### **1. 📚 Библиотека (Library)** ❌ **NOT STARTED**
+**Purpose**: Browse and manage downloaded movies/shows
+
+**Features**:
+- Grid view of downloaded files (like Feed)
+- Metadata, posters, ratings
+- Filters: genre, year, quality, watched/unwatched
+- Search within library
+- Mark as watched, add to favorites
+- Delete files
+- Open in player
+
+**Backend**: File scanner, library database, CRUD operations
+**Frontend**: LibraryTab.svelte (similar to Feed)
+
+---
+
+### **2. 📋 История (History)** ❌ **NOT STARTED**
+**Purpose**: Download analytics and statistics
+
+**Features**:
+- **Statistics Dashboard**:
+  - Preferred quality chart (1080p: 45%, 720p: 30%, 4K: 25%)
+  - Preferred genres pie chart
+  - Downloads by year/month line chart
+  - Total GB downloaded counter
+  - Average file size
+- **Download History List**:
+  - All downloaded movies with metadata
+  - Show parsed quality/source/audio from torrent name
+  - Download date, size, seeders at time of download
+  - Filter by quality/genre/year
+  - Search history
+
+**Backend**: 
+- Download history table (movie_id, torrent_name, parsed_quality, parsed_source, parsed_audio, download_date, size_gb)
+- Statistics aggregation queries
+- Parse quality/source/audio using normalizer patterns
+
+**Frontend**: 
+- HistoryTab.svelte with charts (Chart.js)
+- Statistics cards
+- History list with filters
+
+**Data Source**: Parse from torrent names using `engine/src/normalize/patterns.rs` and `title_normalizer/`
+
+---
+
+### **3. 🎬 Лента (Feed)** ✅ **WORKING**
+**Purpose**: Browse recent movies from indexers
+
+**Status**: Fully functional, shows movies from Monna2
+
+---
+
+### **4. ⭐ Закладки (Bookmarks)** ❌ **NOT STARTED**
+**Purpose**: Wishlist for movies that don't exist yet on indexers
+
+**Features**:
+- Bookmark movie with quality preferences:
+  - **Quality**: 480p, 720p, 1080p, 2160p (4K), etc.
+  - **Source**: WEBRip, WEB-DL, BluRay, HDTV, BRRip, etc.
+  - **Audio**: DTS, AC3, Dolby Atmos, AAC, MP3, etc.
+- Auto-check indexers periodically (every 6-24 hours)
+- Notify when movie appears matching filters
+- Show match quality score (how well it matches preferences)
+- One-click download when match found
+- Badge on tab showing bookmark count
+
+**Backend**:
+- Bookmarks table (movie_id, title, year, quality_filter, source_filter, audio_filter, created_at, last_checked)
+- Periodic job to check indexers for bookmarked movies
+- Parse quality/source/audio from torrent names using normalizer
+- Match against user preferences
+- Notification system
+
+**Frontend**:
+- BookmarksTab.svelte
+- Add bookmark button in movie detail panel
+- Quality filter dropdowns (multi-select)
+- Bookmark list with match status
+- Notification when match found
+
+**Data Source**: Parse from torrent names using `engine/src/normalize/patterns.rs` and `title_normalizer/`
+
+**Example**:
+```
+User bookmarks "Dune: Part Three (2026)"
+Preferences: Quality >= 1080p, Source = BluRay OR WEB-DL, Audio = DTS OR Dolby
+System checks indexers every 12 hours
+When "Dune.Part.Three.2026.1080p.BluRay.DTS.x264-GROUP" appears:
+  → Notify user: "Dune: Part Three is now available! (1080p BluRay DTS)"
+  → Show in bookmarks with "✅ Match Found" badge
+  → One-click download
+```
+
+---
+
+### **5. 📥 Загрузки (Downloads)** ⏳ **BACKEND DONE, UI PENDING**
+**Purpose**: Monitor active downloads from qBittorrent
+
+**Features**:
+- List of active torrents
+- Real-time progress bars
+- Speed, ETA, seeders/leechers
+- Pause/resume/cancel buttons
+- Open in qBittorrent button
+- Auto-refresh every 2 seconds
+
+**Backend**: ✅ Complete (qBittorrent client working)
+**Frontend**: ❌ DownloadsTab.svelte (not built yet)
+
+---
+
+### **6. ⚙️ Настройки (Settings)** ❌ **NOT STARTED**
+**Purpose**: Configure app settings
+
+**Features**:
+- **API Keys**: TMDB, Kinopoisk (masked input, test button)
+- **qBittorrent**: URL, username, password (test connection)
+- **Paths**: Library folder, download folder
+- **Indexers**: Enable/disable, test connectivity
+- **Quality Preferences**: Default quality for auto-download
+- **Notifications**: Desktop notifications on/off
+- **Advanced**: Cache size, log level, proxy settings
+
+**Backend**: Settings table, CRUD operations
+**Frontend**: SettingsTab.svelte with forms
+
+---
+
+**Goal**: Ship functional v1.0 with all 6 tabs by end of Month 1
+
+---
+
+## 📚 Documentation
+
+**Essential Docs**:
+- **[ACTION_PLAN.md](./ACTION_PLAN.md)** - What to build RIGHT NOW (3-week plan)
+- **[RATING_MANAGER.md](./RATING_MANAGER.md)** - Rating system (actually works)
+- **[DATABASE.md](./DATABASE.md)** - Database schema
+- **[UI.md](./UI.md)** - UI components
+
+**Architecture Docs** (for reference):
+- **[JOB_MANAGER.md](./JOB_MANAGER.md)** - Job queue design (not implemented yet)
 
 ---

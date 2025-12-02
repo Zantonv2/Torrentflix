@@ -733,6 +733,77 @@ impl Engine {
             Ok(0)
         }
     }
+
+    /// Start downloading a torrent
+    pub async fn start_download(&self, magnet_link: &str, title: &str) -> Result<String> {
+        info!("Engine: Starting download for: {}", title);
+        
+        // Get qBittorrent config from environment
+        let qb_url = std::env::var("QBITTORRENT_URL")
+            .unwrap_or_else(|_| "http://localhost:5555".to_string());
+        let qb_username = std::env::var("QBITTORRENT_USERNAME")
+            .unwrap_or_else(|_| "admin".to_string());
+        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
+            .unwrap_or_else(|_| "adminadmin".to_string());
+        
+        let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
+        let hash = client.add_torrent(magnet_link).await?;
+        
+        info!("Engine: Download started with hash: {}", hash);
+        Ok(hash)
+    }
+
+    /// Get all active downloads
+    pub async fn get_active_downloads(&self) -> Result<Vec<crate::models::DownloadStatus>> {
+        let qb_url = std::env::var("QBITTORRENT_URL")
+            .unwrap_or_else(|_| "http://localhost:5555".to_string());
+        let qb_username = std::env::var("QBITTORRENT_USERNAME")
+            .unwrap_or_else(|_| "admin".to_string());
+        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
+            .unwrap_or_else(|_| "adminadmin".to_string());
+        
+        let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
+        client.get_all_downloads().await
+    }
+
+    /// Pause a download
+    pub async fn pause_download(&self, hash: &str) -> Result<()> {
+        let qb_url = std::env::var("QBITTORRENT_URL")
+            .unwrap_or_else(|_| "http://localhost:5555".to_string());
+        let qb_username = std::env::var("QBITTORRENT_USERNAME")
+            .unwrap_or_else(|_| "admin".to_string());
+        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
+            .unwrap_or_else(|_| "adminadmin".to_string());
+        
+        let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
+        client.pause_download(hash).await
+    }
+
+    /// Resume a download
+    pub async fn resume_download(&self, hash: &str) -> Result<()> {
+        let qb_url = std::env::var("QBITTORRENT_URL")
+            .unwrap_or_else(|_| "http://localhost:5555".to_string());
+        let qb_username = std::env::var("QBITTORRENT_USERNAME")
+            .unwrap_or_else(|_| "admin".to_string());
+        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
+            .unwrap_or_else(|_| "adminadmin".to_string());
+        
+        let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
+        client.resume_download(hash).await
+    }
+
+    /// Delete a download
+    pub async fn delete_download(&self, hash: &str, delete_files: bool) -> Result<()> {
+        let qb_url = std::env::var("QBITTORRENT_URL")
+            .unwrap_or_else(|_| "http://localhost:5555".to_string());
+        let qb_username = std::env::var("QBITTORRENT_USERNAME")
+            .unwrap_or_else(|_| "admin".to_string());
+        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
+            .unwrap_or_else(|_| "adminadmin".to_string());
+        
+        let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
+        client.remove_download(hash, delete_files).await
+    }
 }
 
 impl Default for Engine {

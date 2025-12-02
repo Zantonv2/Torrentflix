@@ -9,7 +9,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "dev": "concurrently \"npm run ui:dev\" \"wait-on http://localhost:5173 && npm run tauri:dev\"",
+    "dev": "concurrently \"npm run ui:dev\" \"wait-on http://127.0.0.1:5173 && npm run tauri:dev\"",
     "build": "npm run ui:build && npm run tauri:build"
   },
   "devDependencies": {

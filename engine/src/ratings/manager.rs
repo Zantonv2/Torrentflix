@@ -22,7 +22,7 @@ use super::imdb::ImdbClient;
 pub struct RatingManager {
     cache: Arc<RatingCache>,
     db_cache: Option<Arc<RatingCacheDatabase>>,
-    kinopoisk_client: Arc<KinopoiskClient>,
+    kinopoisk_client: Option<Arc<KinopoiskClient>>,
     imdb_client: Arc<ImdbClient>,
     tmdb_client: Arc<TmdbClient>,
     rating_update_tx: Arc<Mutex<Option<mpsc::UnboundedSender<RatingUpdate>>>>,
@@ -30,8 +30,19 @@ pub struct RatingManager {
 
 impl RatingManager {
     /// Create a new Rating Manager
+    /// Kinopoisk is optional - if KINOPOISK_API_TOKEN is not set, RatingManager will still work but without Kinopoisk ratings
     pub fn new(tmdb_client: Arc<TmdbClient>) -> Result<Self> {
-        let kinopoisk_client = Arc::new(KinopoiskClient::new()?);
+        // Kinopoisk is optional - create client only if API token is available
+        let kinopoisk_client = match KinopoiskClient::new() {
+            Ok(client) => {
+                info!("Kinopoisk client initialized successfully");
+                Some(Arc::new(client))
+            },
+            Err(e) => {
+                warn!("Kinopoisk client initialization failed: {}. Ratings from Kinopoisk will not be available.", e);
+                None
+            }
+        };
         let imdb_client = Arc::new(ImdbClient::new());
 
         Ok(Self {
@@ -150,11 +161,15 @@ impl RatingManager {
 
         // Spawn workers
         info!("Rating Manager: 🚀 SPAWNING WORKERS...");
-        let kinopoisk_handle = if !kinopoisk_to_fetch.is_empty() {
+        let kinopoisk_handle = if !kinopoisk_to_fetch.is_empty() && self.kinopoisk_client.is_some() {
             eprintln!("🟢 Rating Manager: Spawning Kinopoisk worker for {} movies", kinopoisk_to_fetch.len());
             info!("Rating Manager: 🟢 Spawning Kinopoisk worker ({} movies to fetch, {} from cache)", 
                   kinopoisk_to_fetch.len(), kinopoisk_from_cache.len());
             Some(self.spawn_kinopoisk_worker(kinopoisk_to_fetch))
+        } else if !kinopoisk_to_fetch.is_empty() && self.kinopoisk_client.is_none() {
+            eprintln!("⚪ Rating Manager: Kinopoisk client not available, skipping Kinopoisk ratings");
+            info!("Rating Manager: ⚪ Kinopoisk client not available, skipping Kinopoisk ratings");
+            None
         } else {
             eprintln!("⚪ Rating Manager: No movies to fetch for Kinopoisk (all from cache or already have ratings)");
             info!("Rating Manager: ⚪ Kinopoisk: All ratings from cache, no worker needed");
@@ -667,7 +682,16 @@ impl RatingManager {
 
     /// Spawn Kinopoisk worker
     fn spawn_kinopoisk_worker(&self, movies: Vec<(usize, EnrichedMedia)>) -> tokio::task::JoinHandle<Result<Vec<RatingWorkerResult>>> {
-        let client = Arc::clone(&self.kinopoisk_client);
+        let client = match &self.kinopoisk_client {
+            Some(client) => Arc::clone(client),
+            None => {
+                // Return a task that immediately returns empty results if Kinopoisk is not available
+                return tokio::spawn(async move {
+                    warn!("Kinopoisk client not available, skipping Kinopoisk ratings");
+                    Ok(Vec::new())
+                });
+            }
+        };
         
         tokio::spawn(async move {
             info!("🟡 Kinopoisk Worker: 🚀 STARTING, processing {} movies", movies.len());

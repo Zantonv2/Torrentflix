@@ -26,15 +26,17 @@ static DIRECTOR_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(?i)Режиссёр:\s*(.+?)(?:\n|В ролях|Время|$)").unwrap()
 });
 static CAST_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(r"(?i)(?:В ролях|Актеры):\s*(.+?)(?:\n\n|Описание|О фильме|Время|Формат|$)").unwrap()
+    // Stop before description keywords: "О фильме", "Описание", "О Сериале" (case-insensitive)
+    regex::Regex::new(r"(?i)(?:В ролях|Актеры):\s*(.+?)(?:\n\n|\.?\s*(?:О фильме|Описание|О Сериале)|Время|Формат|$)").unwrap()
 });
 // Support both "Продолжительность:" and "ВРЕМЯ:" formats
 static RUNTIME_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(r"(?i)(?:Продолжительность|Время):\s*(\d+):(\d+):(\d+)").unwrap()
 });
 // More flexible description regex - looks for text after cast or other markers
+// Supports: "О фильме", "Описание", "О Сериале" (for TV shows)
 static DESCRIPTION_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(r"(?i)(?:О фильме|Описание):?\s*(.+?)(?:Продолжительность|Время|Файл|Скачать|Формат|$)").unwrap()
+    regex::Regex::new(r"(?i)(?:О фильме|Описание|О Сериале):?\s*(.+?)(?:Продолжительность|Время|Файл|Скачать|Формат|$)").unwrap()
 });
 // Alternative: extract description from paragraph text after cast section
 static DESCRIPTION_FALLBACK_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
@@ -501,7 +503,17 @@ impl MonnaIndexer {
             // Extract cast
             if let Some(cast_match) = CAST_REGEX.captures(&text) {
                 let cast_str = cast_match.get(1).unwrap().as_str().trim();
-                metadata.cast = cast_str.split(',')
+                
+                // Additional cleanup: remove description keywords that might have been captured
+                // Handle cases like "И Другие.о Сериале:" or "И Другие.О фильме:" (no space after period)
+                let desc_keywords = regex::Regex::new(r"(?i)\.?\s*(?:о фильме|описание|о сериале):.*$").unwrap();
+                let cast_str = desc_keywords.replace(cast_str, "");
+                
+                // Also remove trailing "И Другие" if it's followed by description keywords
+                let others_pattern = regex::Regex::new(r"(?i)\s*и другие\.?\s*(?:о фильме|описание|о сериале).*$").unwrap();
+                let cast_str = others_pattern.replace(&cast_str, "");
+                
+                metadata.cast = cast_str.trim().split(',')
                     .map(|c| c.trim())
                     .filter(|c| !c.is_empty())
                     .map(|c| to_title_case(c))
@@ -684,7 +696,17 @@ impl MonnaIndexer {
             // Extract cast
             if let Some(cast_match) = CAST_REGEX.captures(&text) {
                 let cast_str = cast_match.get(1).unwrap().as_str().trim();
-                metadata.cast = cast_str.split(',')
+                
+                // Additional cleanup: remove description keywords that might have been captured
+                // Handle cases like "И Другие.о Сериале:" or "И Другие.О фильме:" (no space after period)
+                let desc_keywords = regex::Regex::new(r"(?i)\.?\s*(?:о фильме|описание|о сериале):.*$").unwrap();
+                let cast_str = desc_keywords.replace(cast_str, "");
+                
+                // Also remove trailing "И Другие" if it's followed by description keywords
+                let others_pattern = regex::Regex::new(r"(?i)\s*и другие\.?\s*(?:о фильме|описание|о сериале).*$").unwrap();
+                let cast_str = others_pattern.replace(&cast_str, "");
+                
+                metadata.cast = cast_str.trim().split(',')
                     .map(|c| c.trim())
                     .filter(|c| !c.is_empty())
                     .map(|c| to_title_case(c))
@@ -1021,7 +1043,7 @@ impl MonnaIndexer {
                     metadata.insert("director".to_string(), line.split(':').nth(1).unwrap_or("").trim().to_string());
                 } else if line.starts_with("В ролях:") {
                     metadata.insert("cast".to_string(), line.split(':').nth(1).unwrap_or("").trim().to_string());
-                } else if line.starts_with("О фильме:") {
+                } else if line.starts_with("О фильме:") || line.starts_with("О Сериале:") {
                     metadata.insert("description".to_string(), line.split(':').nth(1).unwrap_or("").trim().to_string());
                 } else if line.starts_with("Продолжительность:") {
                     metadata.insert("duration".to_string(), line.split(':').nth(1).unwrap_or("").trim().to_string());

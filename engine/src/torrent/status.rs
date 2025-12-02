@@ -16,7 +16,7 @@ impl DownloadTracker {
     }
 
     pub async fn track_download(&mut self, status: DownloadStatus) {
-        self.downloads.insert(status.torrent_info_hash.clone(), status);
+        self.downloads.insert(status.hash.clone(), status);
     }
 
     pub async fn get_status(&self, hash: &str) -> Option<&DownloadStatus> {
