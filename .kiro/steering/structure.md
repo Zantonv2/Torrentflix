@@ -1,8 +1,12 @@
+---
+inclusion: always
+---
+
 # Project Structure
 
 ## Root Layout
 
-```
+```text
 Cargo.toml              # Workspace root with shared dependencies
 package.json            # Root npm scripts for dev/build
 .data/                  # SQLite database files (gitignored)
@@ -11,9 +15,9 @@ docs/                   # Architecture and implementation docs
 
 ## Engine (`engine/`)
 
-Core Rust library with all business logic:
+Core Rust library with all business logic. When working on backend features, start here.
 
-```
+```text
 engine/src/
 ├── config/             # Settings loader, migrations
 ├── database/           # SQLite connection, queries (library, jobs, ratings)
@@ -42,9 +46,9 @@ engine/src/
 
 ## Tauri App (`src-tauri/`)
 
-Thin wrapper exposing engine to frontend:
+Thin wrapper exposing engine to frontend. Minimal logic here—keep it as a command bridge.
 
-```
+```text
 src-tauri/src/
 ├── commands.rs         # Tauri command handlers (search, feed, status)
 └── main.rs             # App initialization, event system
@@ -52,9 +56,9 @@ src-tauri/src/
 
 ## UI (`ui/`)
 
-Svelte frontend with Netflix-style components:
+Svelte frontend with Netflix-style components. When working on UI, start here.
 
-```
+```text
 ui/src/
 ├── components/
 │   ├── MovieGrid.svelte      # Grid layout with infinite scroll
@@ -74,18 +78,66 @@ ui/src/
 
 ## Documentation (`docs/`)
 
-- `AGENT_INSTRUCTIONS.md`: Current work context and next steps
+Reference these for architecture and design decisions:
+
 - `ROADMAP.md`: Complete architecture and implementation status
 - `DATABASE.md`: Schema, maintenance, job queue design
 - `JOB_MANAGER.md`: Background job system architecture
 - `RATING_MANAGER.md`: Rating aggregation system details
 - `UI.md`: UI component specifications
+- `ACTION_PLAN.md`: Current work context and next steps
 
-## Conventions
+## Code Organization Principles
 
-- **Rust modules**: One feature per module, public API via `mod.rs`
-- **Error handling**: Use `anyhow::Result` for application errors, `thiserror` for library errors
-- **Async**: All I/O is async with Tokio, use `Arc<Mutex<T>>` for shared state
-- **Database**: SQLite with WAL mode, foreign keys enabled, use transactions for multi-step operations
-- **UI components**: Self-contained Svelte components with TypeScript, TailwindCSS for styling
-- **Naming**: Snake_case for Rust, camelCase for TypeScript/Svelte
+### Rust Modules
+
+- **One feature per module**: Each module has a single responsibility
+- **Public API via `mod.rs`**: Re-export public types and functions
+- **Private by default**: Only expose what's needed
+- **Traits for abstraction**: Use traits for pluggable components (indexers, metadata providers)
+
+### Error Handling
+
+- **Application errors**: Use `anyhow::Result<T>` for functions that can fail
+- **Library errors**: Use `thiserror` for custom error types with context
+- **Error propagation**: Use `?` operator, avoid `.unwrap()` in library code
+
+### Async & Concurrency
+
+- **All I/O is async**: Use Tokio for all blocking operations
+- **Shared state**: Use `Arc<Mutex<T>>` for thread-safe shared state
+- **Channels**: Prefer channels over locks for producer-consumer patterns
+- **Spawning tasks**: Use `tokio::spawn` for background work, not threads
+
+### Database
+
+- **WAL mode**: Enabled for concurrent access
+- **Foreign keys**: Enabled for referential integrity
+- **Transactions**: Use for multi-step operations to ensure atomicity
+- **Queries**: Use sqlx with compile-time checked queries
+
+### UI Components
+
+- **Self-contained**: Each component manages its own state
+- **Props over globals**: Pass data via component props, not global stores
+- **Reactive declarations**: Use Svelte's `$:` for computed values
+- **Styling**: TailwindCSS only, no inline styles
+- **TypeScript strict**: No `any` types, full type safety
+
+### Naming Conventions
+
+- **Rust**: `snake_case` for functions, variables, modules; `PascalCase` for types, traits
+- **TypeScript/Svelte**: `camelCase` for functions, variables; `PascalCase` for types, components
+- **Database**: `snake_case` for tables and columns
+- **Files**: Match the primary export (e.g., `MovieCard.svelte` exports `MovieCard`)
+
+## Data Flow
+
+1. **UI** (Svelte) → calls Tauri command
+2. **Tauri** (src-tauri) → delegates to Engine
+3. **Engine** (Rust) → orchestrates business logic
+4. **Database** (SQLite) → persists state
+5. **External APIs** (TMDB, Kinopoisk, IMDb) → fetches metadata/ratings
+6. **Response** flows back through the same layers
+
+Keep this flow in mind when adding features—logic belongs in the engine, not in Tauri or UI.

@@ -1,0 +1,152 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-filesystem",
+        "/home/trash/Coding_Projects/Torrentflix"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "list_allowed_directories",
+        "read_file",
+        "write_file",
+        "list_directory"
+      ]
+    },
+    "git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "/home/trash/Coding_Projects/Torrentflix"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_repository_status",
+        "get_commit_history",
+        "get_diff",
+        "git_status",
+        "git_log"
+      ]
+    },
+    "sqlite": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-sqlite",
+        "--db-path",
+        "/home/trash/Coding_Projects/Torrentflix/.data/torrentflix.db"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "query",
+        "analyze",
+        "list_tables",
+        "read_query"
+      ]
+    },
+    "shell": {
+      "command": "uvx",
+      "args": [
+        "sonirico/mcp-shell@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": true,
+      "autoApprove": []
+    },
+    "browser": {
+      "command": "uvx",
+      "args": [
+        "browsermcp/mcp@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": true,
+      "autoApprove": []
+    },
+    "code-assistant": {
+      "command": "uvx",
+      "args": [
+        "stippi/code-assistant@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": true,
+      "autoApprove": []
+    },
+    "svelte": {
+      "command": "uvx",
+      "args": [
+        "freema/mcp-design-system-extractor@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "typescript": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@mizchi/lsmcp",
+        "-p",
+        "tsgo"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "list_dir",
+        "get_project_overview"
+      ]
+    },
+    "rust": {
+      "command": "rust-mcp-server",
+      "args": [
+        "--workspace",
+        "/home/trash/Coding_Projects/Torrentflix"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ],
+      "env": {
+        "CONTEXT7_API_KEY": "ctx7sk-dff56983-6957-4778-89af-a2dfcab18120",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "search_documentation",
+        "get_library_docs",
+        "get_code_examples",
+        "get_api_reference",
+        "get_best_practices",
+        "list_supported_libraries",
+        "get_changelog"
+      ]
+    }
+  }
+}
