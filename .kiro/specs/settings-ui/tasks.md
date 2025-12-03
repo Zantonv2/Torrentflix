@@ -169,58 +169,58 @@ This implementation plan converts the Settings UI design into a series of action
   - **Property 6: Settings Isolation**
   - **Validates: Requirements 1.5, 2.5**
 
-- [ ] 23. Write unit tests for Settings struct
-  - [ ] 23.1 Test validation functions for each field type
-  - [ ] 23.2 Test serialization/deserialization
-  - [ ] 23.3 Test default value generation
-  - [ ] 23.4 Test edge cases (empty strings, boundary values)
+- [x] 23. Write unit tests for Settings struct
+  - [x] 23.1 Test validation functions for each field type
+  - [x] 23.2 Test serialization/deserialization
+  - [x] 23.3 Test default value generation
+  - [x] 23.4 Test edge cases (empty strings, boundary values)
 
-- [ ] 24. Write integration tests for settings workflow
-  - [ ] 24.1 Test end-to-end save/load flow
-  - [ ] 24.2 Test qBittorrent connection with real client
-  - [ ] 24.3 Test file picker integration
-  - [ ] 24.4 Test notification display
+- [x] 24. Write integration tests for settings workflow
+  - [x] 24.1 Test end-to-end save/load flow
+  - [x] 24.2 Test qBittorrent connection with real client
+  - [x] 24.3 Test file picker integration
+  - [x] 24.4 Test notification display
 
-- [ ] 25. Checkpoint - Ensure all tests pass
-  - [ ] 25.1 Run all unit tests
-  - [ ] 25.2 Run all property-based tests
-  - [ ] 25.3 Run all integration tests
-  - [ ] 25.4 Fix any failing tests
+- [x] 25. Checkpoint - Ensure all tests pass
+  - [x] 25.1 Run all unit tests
+  - [x] 25.2 Run all property-based tests
+  - [x] 25.3 Run all integration tests
+  - [x] 25.4 Fix any failing tests
 
-- [ ] 26. Integrate settings into Engine initialization
-  - [ ] 26.1 Load settings on Engine startup
-  - [ ] 26.2 Use settings for qBittorrent client initialization
-  - [ ] 26.3 Use settings for API client initialization
-  - [ ] 26.4 Add logging for settings application
+- [x] 26. Integrate settings into Engine initialization
+  - [x] 26.1 Load settings on Engine startup
+  - [x] 26.2 Use settings for qBittorrent client initialization
+  - [x] 26.3 Use settings for API client initialization
+  - [x] 26.4 Add logging for settings application
   - _Requirements: 4.2, 4.3_
 
-- [ ] 27. Update qBittorrent client to use settings
-  - [ ] 27.1 Replace hardcoded values in `engine/src/engine.rs` with settings
-  - [ ] 27.2 Update `add_download()` to use settings
-  - [ ] 27.3 Update `pause_download()` to use settings
-  - [ ] 27.4 Update `resume_download()` to use settings
-  - [ ] 27.5 Update `delete_download()` to use settings
+- [x] 27. Update qBittorrent client to use settings
+  - [x] 27.1 Replace hardcoded values in `engine/src/engine.rs` with settings
+  - [x] 27.2 Update `add_download()` to use settings
+  - [x] 27.3 Update `pause_download()` to use settings
+  - [x] 27.4 Update `resume_download()` to use settings
+  - [x] 27.5 Update `delete_download()` to use settings
   - _Requirements: 2.5_
 
-- [ ] 28. Update API clients to use settings
-  - [ ] 28.1 Update TMDB client to use API key from settings
-  - [ ] 28.2 Update Kinopoisk client to use token from settings
-  - [ ] 28.3 Remove hardcoded API keys from code
-  - [ ] 28.4 Add logging for API client initialization
+- [x] 28. Update API clients to use settings
+  - [x] 28.1 Update TMDB client to use API key from settings
+  - [x] 28.2 Update Kinopoisk client to use token from settings
+  - [x] 28.3 Remove hardcoded API keys from code
+  - [x] 28.4 Add logging for API client initialization
   - _Requirements: 1.2, 1.5_
 
-- [ ] 29. Implement settings UI tab integration
-  - [ ] 29.1 Add SettingsTab to main TabBar navigation
-  - [ ] 29.2 Ensure tab is accessible from main application
-  - [ ] 29.3 Add icon and label for Settings tab
-  - [ ] 29.4 Test tab switching and state persistence
+- [x] 29. Implement settings UI tab integration
+  - [x] 29.1 Add SettingsTab to main TabBar navigation
+  - [x] 29.2 Ensure tab is accessible from main application
+  - [x] 29.3 Add icon and label for Settings tab
+  - [x] 29.4 Test tab switching and state persistence
   - _Requirements: 1.1, 2.1, 3.1_
 
-- [ ] 30. Final Checkpoint - Ensure all tests pass
-  - [ ] 30.1 Run all tests one final time
-  - [ ] 30.2 Verify no hardcoded values remain
-  - [ ] 30.3 Test complete workflow end-to-end
-  - [ ] 30.4 Document any known issues
+- [x] 30. Final Checkpoint - Ensure all tests pass
+  - [x] 30.1 Run all tests one final time
+  - [x] 30.2 Verify no hardcoded values remain
+  - [x] 30.3 Test complete workflow end-to-end
+  - [x] 30.4 Document any known issues
 
 ---
 

@@ -35,7 +35,7 @@ impl RatingManager {
         // Kinopoisk is optional - create client only if API token is available
         let kinopoisk_client = match KinopoiskClient::new() {
             Ok(client) => {
-                info!("Kinopoisk client initialized successfully");
+                info!("Kinopoisk client initialized successfully from environment");
                 Some(Arc::new(client))
             },
             Err(e) => {
@@ -43,6 +43,38 @@ impl RatingManager {
                 None
             }
         };
+        let imdb_client = Arc::new(ImdbClient::new());
+
+        Ok(Self {
+            cache: Arc::new(RatingCache::new()),
+            db_cache: None, // Will be set via set_db_cache()
+            kinopoisk_client,
+            imdb_client,
+            tmdb_client,
+            rating_update_tx: Arc::new(Mutex::new(None)),
+        })
+    }
+
+    /// Create a new Rating Manager with optional Kinopoisk API token from settings
+    /// This allows using API tokens from settings instead of environment variables
+    pub fn with_api_tokens(tmdb_client: Arc<TmdbClient>, kinopoisk_token: Option<String>) -> Result<Self> {
+        // Kinopoisk is optional - create client only if API token is provided
+        let kinopoisk_client = if let Some(token) = kinopoisk_token {
+            match KinopoiskClient::with_api_token(token) {
+                Ok(client) => {
+                    info!("Kinopoisk client initialized successfully from settings");
+                    Some(Arc::new(client))
+                },
+                Err(e) => {
+                    warn!("Kinopoisk client initialization failed: {}. Ratings from Kinopoisk will not be available.", e);
+                    None
+                }
+            }
+        } else {
+            info!("No Kinopoisk API token provided in settings, Kinopoisk ratings will not be available");
+            None
+        };
+        
         let imdb_client = Arc::new(ImdbClient::new());
 
         Ok(Self {

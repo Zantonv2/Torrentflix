@@ -51,6 +51,9 @@ struct KinopoiskMovieDetails {
 impl KinopoiskClient {
     /// Create a new Kinopoisk client
     /// Loads API token from KINOPOISK_API_TOKEN environment variable
+    /// 
+    /// Note: This method is provided for backward compatibility and testing.
+    /// In production, use `with_api_token()` with the token from settings.
     pub fn new() -> Result<Self> {
         let api_key = std::env::var("KINOPOISK_API_TOKEN")
             .map_err(|_| anyhow!("KINOPOISK_API_TOKEN not found in environment variables"))?;
@@ -62,6 +65,23 @@ impl KinopoiskClient {
         Ok(Self {
             client,
             api_key,
+            base_url: "https://kinopoiskapiunofficial.tech/api".to_string(),
+        })
+    }
+
+    /// Create a new Kinopoisk client with provided API token
+    /// This allows using API token from settings instead of environment variables
+    pub fn with_api_token(api_token: String) -> Result<Self> {
+        debug!("Kinopoisk Client: Initializing with API token from settings");
+        
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()?;
+
+        debug!("Kinopoisk Client: ✅ Client initialized successfully");
+        Ok(Self {
+            client,
+            api_key: api_token,
             base_url: "https://kinopoiskapiunofficial.tech/api".to_string(),
         })
     }

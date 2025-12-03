@@ -43,6 +43,9 @@ impl Engine {
         let normalizer = Normalizer::default();
 
         // Initialize metadata manager with TMDb client
+        // Note: This uses environment variable as temporary fallback
+        // The proper API key from settings will be loaded during initialize()
+        info!("Engine: Creating initial metadata manager (will be updated with settings during initialization)");
         let metadata_manager = MetadataManager::new()
             .set_primary(Box::new(TmdbClient::new(
                 std::env::var("TMDB_API_KEY").ok()
@@ -173,14 +176,65 @@ impl Engine {
         info!("Initializing JobManager");
         let mut job_manager = JobManager::new(database.clone()).await?;
 
-        // Initialize RatingManager with database cache and register it as a worker
-        info!("Engine: Initializing RatingManager...");
-        let tmdb_client = Arc::new(TmdbClient::new(
-            std::env::var("TMDB_API_KEY").ok()
-        ));
+        // Load settings first (before initializing API clients)
+        info!("Engine: Loading settings from database");
+        let settings_db_for_load = Arc::new(crate::database::SettingsDatabase::new(database.clone()));
+        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db_for_load);
         
-        info!("Engine: Creating RatingManager instance...");
-        match RatingManager::new(tmdb_client) {
+        let loaded_settings = match settings_manager.load_settings().await {
+            Ok(settings) => {
+                info!("✅ Engine: Settings loaded successfully from database");
+                settings
+            }
+            Err(e) => {
+                warn!("Engine: Failed to load settings from database: {}", e);
+                warn!("Engine: Using default settings as fallback");
+                Settings::default()
+            }
+        };
+        
+        // Initialize RatingManager with database cache and register it as a worker
+        info!("Engine: Initializing RatingManager with API clients from settings...");
+        
+        // Use TMDB API key from settings, fallback to environment variable
+        let tmdb_api_key = loaded_settings.tmdb_api_key.clone()
+            .or_else(|| std::env::var("TMDB_API_KEY").ok());
+        
+        if let Some(ref key) = tmdb_api_key {
+            let source = if loaded_settings.tmdb_api_key.is_some() {
+                "settings database"
+            } else {
+                "environment variable (fallback)"
+            };
+            info!("Engine: ✅ TMDB API key configured from {}", source);
+            debug!("Engine: TMDB API key: {}...{}", &key[..4.min(key.len())], &key[key.len().saturating_sub(4)..]);
+        } else {
+            warn!("Engine: ⚠️ No TMDB API key found in settings or environment");
+            warn!("Engine: Metadata enrichment and TMDB ratings will not be available");
+        }
+        
+        info!("Engine: Creating TMDB client for RatingManager...");
+        let tmdb_client = Arc::new(TmdbClient::new(tmdb_api_key.clone()));
+        
+        // Use Kinopoisk API token from settings, fallback to environment variable
+        let kinopoisk_token = loaded_settings.kinopoisk_api_token.clone()
+            .or_else(|| std::env::var("KINOPOISK_API_TOKEN").ok());
+        
+        if let Some(ref token) = kinopoisk_token {
+            let source = if loaded_settings.kinopoisk_api_token.is_some() {
+                "settings database"
+            } else {
+                "environment variable (fallback)"
+            };
+            info!("Engine: ✅ Kinopoisk API token configured from {}", source);
+            debug!("Engine: Kinopoisk token: {}...{}", &token[..4.min(token.len())], &token[token.len().saturating_sub(4)..]);
+        } else {
+            info!("Engine: ℹ️ No Kinopoisk API token found in settings or environment");
+            info!("Engine: Kinopoisk ratings will not be available (optional feature)");
+        }
+        
+        info!("Engine: Creating RatingManager instance with API tokens from settings...");
+        match RatingManager::with_api_tokens(tmdb_client, kinopoisk_token) {
             Ok(rating_manager) => {
                 info!("Engine: RatingManager created successfully");
                 info!("Engine: Attaching database cache to RatingManager...");
@@ -220,29 +274,42 @@ impl Engine {
             warn!("❌ Engine: ERROR - job_manager is None after initialization!");
         }
 
-        // Load settings from database
-        info!("Engine: Loading settings from database");
-        let settings_db = Arc::new(crate::database::SettingsDatabase::new(database.clone()));
-        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db);
+        // Cache the loaded settings (already loaded earlier for API client initialization)
+        info!("Engine: Caching settings in memory");
+        info!("Engine: qBittorrent configuration:");
+        info!("  - Host: {}", loaded_settings.qbittorrent_host);
+        info!("  - Port: {}", loaded_settings.qbittorrent_port);
+        info!("  - Username: {}", loaded_settings.qbittorrent_username);
+        info!("  - Enabled: {}", loaded_settings.qbittorrent_enabled);
+        info!("Engine: Filesystem paths:");
+        info!("  - Library: {}", loaded_settings.library_path);
+        info!("  - Download: {}", loaded_settings.download_path);
+        info!("Engine: Application settings:");
+        info!("  - Log level: {}", loaded_settings.log_level);
+        info!("  - Search limit: {}", loaded_settings.search_limit);
+        info!("  - Max concurrent downloads: {}", loaded_settings.max_concurrent_downloads);
+        info!("Engine: API keys configured:");
+        info!("  - TMDB: {}", if loaded_settings.tmdb_api_key.is_some() { "Yes" } else { "No" });
+        info!("  - Kinopoisk: {}", if loaded_settings.kinopoisk_api_token.is_some() { "Yes" } else { "No" });
         
-        match settings_manager.load_settings().await {
-            Ok(loaded_settings) => {
-                info!("✅ Engine: Settings loaded successfully");
-                info!("Engine: qBittorrent: {}:{}", loaded_settings.qbittorrent_host, loaded_settings.qbittorrent_port);
-                info!("Engine: Library path: {}", loaded_settings.library_path);
-                info!("Engine: Download path: {}", loaded_settings.download_path);
-                info!("Engine: Log level: {}", loaded_settings.log_level);
-                
-                let mut settings_lock = self.settings.write().await;
-                *settings_lock = Some(loaded_settings);
-            }
-            Err(e) => {
-                warn!("Engine: Failed to load settings: {}", e);
-                warn!("Engine: Using default settings");
-                
-                let mut settings_lock = self.settings.write().await;
-                *settings_lock = Some(Settings::default());
-            }
+        let mut settings_lock = self.settings.write().await;
+        *settings_lock = Some(loaded_settings.clone());
+        info!("✅ Engine: Settings cached in memory");
+        drop(settings_lock);
+        
+        // Update metadata manager with TMDB API key from settings
+        info!("Engine: Configuring metadata manager with API keys from settings...");
+        if let Some(ref tmdb_key) = loaded_settings.tmdb_api_key {
+            info!("Engine: Creating new metadata manager with TMDB API key from settings database");
+            self.metadata_manager = MetadataManager::new()
+                .set_primary(Box::new(TmdbClient::new(Some(tmdb_key.clone()))));
+            info!("✅ Engine: Metadata manager configured with TMDB client from settings");
+        } else if tmdb_api_key.is_some() {
+            info!("Engine: Metadata manager using TMDB API key from environment variable (fallback)");
+            info!("✅ Engine: Metadata manager configured with TMDB client from environment");
+        } else {
+            warn!("Engine: ⚠️ No TMDB API key available, metadata manager will have limited functionality");
+            warn!("Engine: Configure TMDB API key in Settings UI to enable metadata enrichment");
         }
 
         Ok(())
@@ -774,6 +841,7 @@ impl Engine {
         let url = settings.qbittorrent_url();
         let username = settings.qbittorrent_username.clone();
         let password = settings.qbittorrent_password.clone();
+        debug!("Engine: Using qBittorrent config from settings: {} (user: {})", url, username);
         Ok((url, username, password))
     }
 
@@ -783,6 +851,7 @@ impl Engine {
         
         // Get qBittorrent config from settings
         let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
+        info!("Engine: Using qBittorrent from settings: {}", qb_url);
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         let hash = client.add_torrent(magnet_link).await?;
@@ -795,6 +864,7 @@ impl Engine {
     pub async fn get_active_downloads(&self) -> Result<Vec<crate::models::DownloadStatus>> {
         // Get qBittorrent config from settings
         let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
+        debug!("Engine: Fetching downloads from qBittorrent (settings): {}", qb_url);
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         client.get_all_downloads().await

@@ -151,6 +151,12 @@ pub struct TmdbClient {
 
 impl TmdbClient {
     pub fn new(api_key: Option<String>) -> Self {
+        if api_key.is_some() {
+            debug!("TMDB Client: Initializing with API key");
+        } else {
+            debug!("TMDB Client: Initializing without API key (limited functionality)");
+        }
+        
         let mut client_builder = Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
         

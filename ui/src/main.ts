@@ -1,10 +1,8 @@
 import './app.css';
 import App from './App.svelte';
 
-// Svelte 5 mount API
-import { mount } from 'svelte';
-
-const app = mount(App, {
+// Svelte 4 mount API
+const app = new App({
   target: document.getElementById('app')!,
 });
 
