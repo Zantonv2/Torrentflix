@@ -14,20 +14,28 @@
 
 ---
 
-## 🚨 Week 1: Download Management (DO THIS NOW)
+## ✅ COMPLETED: Download Management (Week 1)
 
-### Day 1-2: qBittorrent Client
+**Status**: FULLY WORKING - qBittorrent client implemented and tested
 
-**File**: `engine/src/torrent/client.rs`
+**What's done**:
+- ✅ qBittorrent WebAPI client (`engine/src/torrent/client.rs`)
+- ✅ Download commands (add, pause, resume, delete, get_all)
+- ✅ Downloads UI tab (`ui/src/components/DownloadsTab.svelte`)
+- ✅ Real-time progress updates
+- ✅ Tauri command integration
 
-**Delete this bullshit**:
-```rust
-pub async fn add_torrent(&self, magnet_url: &str) -> Result<String> {
-    Ok("mock_hash".to_string())  // 🤡
-}
-```
+**No changes needed** - move to next priority.
 
-**Write this instead**:
+---
+
+## ALREADY DONE!!! ## 🚨 PRIORITY 1: Improve Monna Indexer Metadata Parsing (DO THIS NOW)
+
+**File**: `engine/src/indexers/monna.rs`
+
+**Problem**: Current regex patterns fail on field label variations. See `docs/Selectors.md` for examples.
+
+**Current regex patterns (lines 15-48)**:
 ```rust
 pub struct QBittorrentClient {
     base_url: String,

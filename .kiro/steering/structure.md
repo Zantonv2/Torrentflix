@@ -23,7 +23,7 @@ engine/src/
 ├── database/           # SQLite connection, queries (library, jobs, ratings)
 ├── dedupe/             # Deduplication rules and grouping logic
 ├── filesystem/         # Atomic file operations, hashing, renaming
-├── indexers/           # Torrent indexer adapters (YTS, Monna)
+├── indexers/           # Torrent indexer adapters (Monna)
 │   ├── manager.rs      # Parallel indexer orchestration
 │   ├── registry.rs     # Auto-registration system
 │   └── traits.rs       # Indexer trait definition

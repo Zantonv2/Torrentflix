@@ -24,6 +24,7 @@ futures.workspace = true
 # Tauri dependencies
 tauri = { workspace = true, features = [] }
 tauri-plugin-window-state = "2.0"
+tauri-plugin-dialog = "2.0"
 
 # Environment variable loading
 dotenvy = { workspace = true }

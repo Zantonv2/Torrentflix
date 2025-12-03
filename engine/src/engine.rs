@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use anyhow::Result;
 use tracing::{debug, info, warn, error};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock};
 
 use crate::indexers::{IndexerManager, IndexerRegistry, MonnaIndexer};
 use crate::indexers::traits::SearchQuery;
@@ -13,6 +13,7 @@ use crate::scoring::{MediaScorer, ScoreWeights};
 use crate::jobs::JobManager;
 use crate::database::Database;
 use crate::ratings::RatingManager;
+use crate::settings::models::Settings;
 
 /// Rating update message sent to UI
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -32,6 +33,7 @@ pub struct Engine {
     job_manager: Option<Arc<JobManager>>,
     rating_manager: Option<Arc<crate::ratings::RatingManager>>,
     rating_update_tx: Option<mpsc::UnboundedSender<RatingUpdate>>,
+    settings: Arc<RwLock<Option<Settings>>>,
 }
 
 impl Engine {
@@ -57,6 +59,7 @@ impl Engine {
             job_manager: None, // Will be initialized in initialize() method
             rating_manager: None, // Will be set when RatingManager is created
             rating_update_tx: None,
+            settings: Arc::new(RwLock::new(None)), // Will be loaded during initialization
         }
     }
 
@@ -80,6 +83,7 @@ impl Engine {
             job_manager: None, // Will be initialized in initialize() method
             rating_manager: None, // Will be set when RatingManager is created
             rating_update_tx: None,
+            settings: Arc::new(RwLock::new(None)), // Will be loaded during initialization
         }
     }
 
@@ -156,6 +160,11 @@ impl Engine {
         info!("Initializing database: {}", database_url);
         let database = Arc::new(Database::new(&database_url).await?);
 
+        // Initialize settings database
+        let settings_db = Arc::new(crate::database::SettingsDatabase::new(database.clone()));
+        settings_db.initialize().await?;
+        info!("Settings database initialized");
+
         // Initialize rating cache database
         let rating_cache_db = Arc::new(crate::database::ratings::RatingCacheDatabase::new(database.clone()));
         rating_cache_db.initialize().await?;
@@ -209,6 +218,31 @@ impl Engine {
             info!("✅ Engine: Verified job_manager is Some()");
         } else {
             warn!("❌ Engine: ERROR - job_manager is None after initialization!");
+        }
+
+        // Load settings from database
+        info!("Engine: Loading settings from database");
+        let settings_db = Arc::new(crate::database::SettingsDatabase::new(database.clone()));
+        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db);
+        
+        match settings_manager.load_settings().await {
+            Ok(loaded_settings) => {
+                info!("✅ Engine: Settings loaded successfully");
+                info!("Engine: qBittorrent: {}:{}", loaded_settings.qbittorrent_host, loaded_settings.qbittorrent_port);
+                info!("Engine: Library path: {}", loaded_settings.library_path);
+                info!("Engine: Download path: {}", loaded_settings.download_path);
+                info!("Engine: Log level: {}", loaded_settings.log_level);
+                
+                let mut settings_lock = self.settings.write().await;
+                *settings_lock = Some(loaded_settings);
+            }
+            Err(e) => {
+                warn!("Engine: Failed to load settings: {}", e);
+                warn!("Engine: Using default settings");
+                
+                let mut settings_lock = self.settings.write().await;
+                *settings_lock = Some(Settings::default());
+            }
         }
 
         Ok(())
@@ -734,17 +768,21 @@ impl Engine {
         }
     }
 
+    /// Get qBittorrent configuration from settings
+    async fn get_qbittorrent_config(&self) -> Result<(String, String, String)> {
+        let settings = self.get_settings().await?;
+        let url = settings.qbittorrent_url();
+        let username = settings.qbittorrent_username.clone();
+        let password = settings.qbittorrent_password.clone();
+        Ok((url, username, password))
+    }
+
     /// Start downloading a torrent
     pub async fn start_download(&self, magnet_link: &str, title: &str) -> Result<String> {
         info!("Engine: Starting download for: {}", title);
         
-        // Get qBittorrent config from environment
-        let qb_url = std::env::var("QBITTORRENT_URL")
-            .unwrap_or_else(|_| "http://localhost:5555".to_string());
-        let qb_username = std::env::var("QBITTORRENT_USERNAME")
-            .unwrap_or_else(|_| "admin".to_string());
-        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
-            .unwrap_or_else(|_| "adminadmin".to_string());
+        // Get qBittorrent config from settings
+        let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         let hash = client.add_torrent(magnet_link).await?;
@@ -755,12 +793,8 @@ impl Engine {
 
     /// Get all active downloads
     pub async fn get_active_downloads(&self) -> Result<Vec<crate::models::DownloadStatus>> {
-        let qb_url = std::env::var("QBITTORRENT_URL")
-            .unwrap_or_else(|_| "http://localhost:5555".to_string());
-        let qb_username = std::env::var("QBITTORRENT_USERNAME")
-            .unwrap_or_else(|_| "admin".to_string());
-        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
-            .unwrap_or_else(|_| "adminadmin".to_string());
+        // Get qBittorrent config from settings
+        let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         client.get_all_downloads().await
@@ -768,12 +802,8 @@ impl Engine {
 
     /// Pause a download
     pub async fn pause_download(&self, hash: &str) -> Result<()> {
-        let qb_url = std::env::var("QBITTORRENT_URL")
-            .unwrap_or_else(|_| "http://localhost:5555".to_string());
-        let qb_username = std::env::var("QBITTORRENT_USERNAME")
-            .unwrap_or_else(|_| "admin".to_string());
-        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
-            .unwrap_or_else(|_| "adminadmin".to_string());
+        // Get qBittorrent config from settings
+        let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         client.pause_download(hash).await
@@ -781,12 +811,8 @@ impl Engine {
 
     /// Resume a download
     pub async fn resume_download(&self, hash: &str) -> Result<()> {
-        let qb_url = std::env::var("QBITTORRENT_URL")
-            .unwrap_or_else(|_| "http://localhost:5555".to_string());
-        let qb_username = std::env::var("QBITTORRENT_USERNAME")
-            .unwrap_or_else(|_| "admin".to_string());
-        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
-            .unwrap_or_else(|_| "adminadmin".to_string());
+        // Get qBittorrent config from settings
+        let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         client.resume_download(hash).await
@@ -794,15 +820,99 @@ impl Engine {
 
     /// Delete a download
     pub async fn delete_download(&self, hash: &str, delete_files: bool) -> Result<()> {
-        let qb_url = std::env::var("QBITTORRENT_URL")
-            .unwrap_or_else(|_| "http://localhost:5555".to_string());
-        let qb_username = std::env::var("QBITTORRENT_USERNAME")
-            .unwrap_or_else(|_| "admin".to_string());
-        let qb_password = std::env::var("QBITTORRENT_PASSWORD")
-            .unwrap_or_else(|_| "adminadmin".to_string());
+        // Get qBittorrent config from settings
+        let (qb_url, qb_username, qb_password) = self.get_qbittorrent_config().await?;
         
         let client = crate::torrent::TorrentClient::new(qb_url, qb_username, qb_password);
         client.remove_download(hash, delete_files).await
+    }
+
+    /// Get current settings (from memory or database)
+    /// 
+    /// This method always returns settings, falling back to defaults if:
+    /// - JobManager is not initialized
+    /// - Database cannot be accessed
+    /// - Settings are corrupted
+    pub async fn get_settings(&self) -> Result<crate::settings::models::Settings> {
+        // Return cached settings if available
+        let settings_lock = self.settings.read().await;
+        if let Some(ref settings) = *settings_lock {
+            debug!("Engine: Returning cached settings");
+            return Ok(settings.clone());
+        }
+        drop(settings_lock);
+        
+        info!("Engine: Loading settings from database");
+        
+        // Get settings manager from job manager (which has access to database)
+        if let Some(ref job_manager) = self.job_manager {
+            match job_manager.get_settings().await {
+                Ok(loaded_settings) => {
+                    // Cache the loaded settings
+                    let mut settings_lock = self.settings.write().await;
+                    *settings_lock = Some(loaded_settings.clone());
+                    Ok(loaded_settings)
+                }
+                Err(e) => {
+                    warn!("Engine: Failed to load settings from database: {}. Using defaults.", e);
+                    // Return default settings if loading fails
+                    let defaults = crate::settings::models::Settings::default();
+                    
+                    // Cache the defaults
+                    let mut settings_lock = self.settings.write().await;
+                    *settings_lock = Some(defaults.clone());
+                    
+                    Ok(defaults)
+                }
+            }
+        } else {
+            warn!("Engine: JobManager not initialized, using default settings");
+            // Return default settings if JobManager is not available
+            let defaults = crate::settings::models::Settings::default();
+            
+            // Cache the defaults
+            let mut settings_lock = self.settings.write().await;
+            *settings_lock = Some(defaults.clone());
+            
+            Ok(defaults)
+        }
+    }
+
+    /// Save settings to database with validation
+    pub async fn save_settings(&self, settings: &crate::settings::models::Settings) -> Result<()> {
+        info!("Engine: Saving settings to database");
+        
+        // Get settings manager from job manager (which has access to database)
+        if let Some(ref job_manager) = self.job_manager {
+            job_manager.save_settings(settings).await?;
+            
+            // Update cached settings after successful save
+            let mut settings_lock = self.settings.write().await;
+            *settings_lock = Some(settings.clone());
+            info!("Engine: Settings saved and cache updated");
+            Ok(())
+        } else {
+            warn!("Engine: JobManager not initialized, cannot save settings");
+            Err(anyhow::anyhow!("JobManager not initialized"))
+        }
+    }
+
+    /// Test qBittorrent connection with provided credentials
+    pub async fn test_qbittorrent_connection(
+        &self,
+        url: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<()> {
+        info!("Engine: Testing qBittorrent connection to {}", url);
+        
+        // Get settings manager from job manager (which has access to database)
+        if let Some(ref job_manager) = self.job_manager {
+            job_manager.test_qbittorrent_connection(url, username, password).await
+        } else {
+            warn!("Engine: JobManager not initialized, cannot test connection");
+            Err(anyhow::anyhow!("JobManager not initialized"))
+        }
     }
 }
 

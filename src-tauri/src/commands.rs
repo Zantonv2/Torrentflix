@@ -1,9 +1,10 @@
 use tauri::State;
 use anyhow::Result;
-use tracing::{debug, info, error};
+use tracing::{debug, info, error, warn};
 
 use engine::Engine;
 use engine::ui::dto::{UiSearchRequest, UiSearchResponse, UiSearchResult};
+use engine::settings::models::Settings;
 
 /// Search for movies/series with Netflix-style results
 #[tauri::command]
@@ -268,6 +269,124 @@ pub async fn delete_download(
         Err(e) => {
             error!("❌ Failed to delete download: {}", e);
             Err(format!("Failed to delete download: {}", e))
+        }
+    }
+}
+
+/// Get current settings from database
+/// 
+/// This command always succeeds by falling back to default settings if loading fails.
+/// This ensures the UI can always display the settings form.
+#[tauri::command]
+pub async fn get_settings(
+    engine: State<'_, Engine>,
+) -> Result<Settings, String> {
+    debug!("⚙️ Tauri: get_settings command called");
+    
+    match engine.get_settings().await {
+        Ok(settings) => {
+            info!("✅ Settings loaded successfully");
+            Ok(settings)
+        }
+        Err(e) => {
+            // This should rarely happen since engine.get_settings() now returns defaults on error
+            error!("❌ Failed to load settings: {}", e);
+            warn!("⚠️ Returning default settings to UI");
+            Ok(Settings::default())
+        }
+    }
+}
+
+/// Save settings to database with validation
+/// 
+/// Returns user-friendly error messages for common failure scenarios:
+/// - Validation errors: Specific field-level errors
+/// - Database errors: Generic "unable to save" message
+/// - Connection errors: Specific connection failure details
+#[tauri::command]
+pub async fn save_settings(
+    settings: Settings,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("💾 Tauri: save_settings command called");
+    
+    match engine.save_settings(&settings).await {
+        Ok(_) => {
+            info!("✅ Settings saved successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to save settings: {}", e);
+            
+            // Provide user-friendly error messages
+            let error_msg = e.to_string();
+            
+            // Check if it's a validation error
+            if error_msg.contains("validation failed") || error_msg.contains("must be") {
+                // Return the validation error as-is (it's already user-friendly)
+                Err(error_msg)
+            } else if error_msg.contains("Failed to save") {
+                // Database error
+                Err("Unable to save settings to database. Please check that the application has write permissions and try again.".to_string())
+            } else {
+                // Generic error
+                Err(format!("Failed to save settings: {}", error_msg))
+            }
+        }
+    }
+}
+
+/// Test qBittorrent connection with provided credentials
+/// 
+/// Returns user-friendly error messages for common connection failures:
+/// - Connection timeout
+/// - Connection refused
+/// - Invalid credentials
+/// - Invalid URL
+#[tauri::command]
+pub async fn test_qbittorrent(
+    url: String,
+    username: String,
+    password: String,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("🧪 Tauri: test_qbittorrent command called for: {}", url);
+    
+    match engine.test_qbittorrent_connection(&url, &username, &password).await {
+        Ok(_) => {
+            info!("✅ qBittorrent connection successful");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ qBittorrent connection failed: {}", e);
+            
+            // The error messages from test_qbittorrent_connection are already user-friendly
+            // Just pass them through
+            let error_msg = e.to_string();
+            Err(error_msg)
+        }
+    }
+}
+
+/// Open native file picker for folder selection
+#[tauri::command]
+pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    debug!("📁 Tauri: pick_folder command called");
+    
+    // Use the dialog plugin to pick a folder
+    let folder = tauri_plugin_dialog::DialogExt::dialog(&app)
+        .file()
+        .blocking_pick_folder();
+    
+    match folder {
+        Some(path) => {
+            let path_str = path.to_string();
+            info!("✅ Folder selected: {}", path_str);
+            Ok(Some(path_str))
+        }
+        None => {
+            debug!("📁 Tauri: User cancelled folder selection");
+            Ok(None)
         }
     }
 }

@@ -26,6 +26,9 @@
     if (movie.rating_imdb) {
       parts.push(`IMDB: ${movie.rating_imdb.toFixed(1)}`);
     }
+    if (movie.rating_tmdb) {
+      parts.push(`TMDB: ${movie.rating_tmdb.toFixed(1)}`);
+    }
     if (parts.length > 0) {
       return parts.join(' | ');
     }
@@ -102,7 +105,7 @@
 
       <!-- Rating and TV Show Info -->
       <div class="text-netflix-text-muted text-xs text-left line-clamp-1 flex items-center gap-1 flex-wrap">
-        {#if movie.rating_kinopoisk || movie.rating_imdb}
+        {#if movie.rating_kinopoisk || movie.rating_imdb || movie.rating_tmdb}
           <span class="text-yellow-400">⭐</span>
           <span class="text-yellow-400">{displayRating}</span>
         {:else if movie.rating}

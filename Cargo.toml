@@ -53,3 +53,9 @@ async-trait = "0.1"
 
 # Environment variable loading
 dotenvy = "0.15"
+
+# URL parsing
+url = "2.5"
+
+# Directory utilities
+dirs = "5.0"

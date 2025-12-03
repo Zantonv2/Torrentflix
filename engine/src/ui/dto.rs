@@ -9,9 +9,10 @@ pub struct UiSearchResult {
     pub poster_url: Option<String>,
     pub backdrop_url: Option<String>,
     pub quality_badge: String, // "1080p", "4K", etc.
-    pub rating: Option<f32>, // Primary rating (fallback: TMDB -> IMDb -> Kinopoisk)
+    pub rating: Option<f32>, // Primary rating (fallback: IMDb -> Kinopoisk -> TMDB)
     pub rating_kinopoisk: Option<f32>,
     pub rating_imdb: Option<f32>,
+    pub rating_tmdb: Option<f32>,
     pub runtime_minutes: Option<u32>,
     pub category: Option<String>,
     pub description: Option<String>,
@@ -64,6 +65,7 @@ impl UiSearchResult {
             rating: result.enriched.primary_rating(),
             rating_kinopoisk: result.enriched.rating_kinopoisk,
             rating_imdb: result.enriched.rating_imdb,
+            rating_tmdb: result.enriched.rating_tmdb,
             runtime_minutes: result.enriched.runtime_minutes,
             category: best_quality.category.clone(),
             description: result.enriched.overview.clone(),

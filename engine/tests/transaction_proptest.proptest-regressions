@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c408d423b8753359a703afe8ebd42b683a5f6658607d4117cc1bae8d9877edc8 # shrinks to config = RetryConfig { max_attempts: 1, base_delay_ms: 710, max_delay_ms: 100, exponential_base: 2 }, attempt = 0

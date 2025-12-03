@@ -8,7 +8,7 @@ TorrentFlix (MovieDownloader) is a desktop application for discovering, download
 
 ## Core Features
 
-- **Multi-indexer search**: Aggregates results from multiple torrent indexers (YTS, Monna) with parallel fetching
+- **Multi-indexer search**: Aggregates results from torrent indexers (Monna2) with extensible architecture
 - **Smart deduplication**: Groups releases by identity (title, year, season/episode) and quality signature
 - **Metadata enrichment**: Fetches posters, descriptions, cast, runtime, and genres from TMDB
 - **Rating aggregation**: Displays ratings from Kinopoisk, IMDb, and TMDB with background fetching

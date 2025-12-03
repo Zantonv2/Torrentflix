@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{Manager, Emitter};
+use tauri::Emitter;
 use tracing::{warn, info};
 use tokio::sync::mpsc;
 
@@ -60,18 +60,22 @@ async fn main() {
     // Initialize logging
     tracing_subscriber::fmt::init();
 
+    // Create channel for rating updates BEFORE initializing engine
+    let (rating_tx, mut rating_rx) = mpsc::unbounded_channel::<engine::RatingUpdate>();
+    
     // Initialize the engine
     let mut engine = engine::Engine::new();
+    
+    // Set the rating update channel BEFORE initialize() so it's available during setup
+    engine.set_rating_update_channel(rating_tx);
+    
     if let Err(e) = engine.initialize().await {
         warn!("Failed to initialize engine: {}", e);
         warn!("Application will start but engine features may be unavailable");
     }
     
-    // Create channel for rating updates
-    let (rating_tx, mut rating_rx) = mpsc::unbounded_channel::<engine::RatingUpdate>();
-    engine.set_rating_update_channel(rating_tx);
-    
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
             let app_handle = app.handle().clone();
             
@@ -111,7 +115,11 @@ async fn main() {
             commands::get_active_downloads,
             commands::pause_download,
             commands::resume_download,
-            commands::delete_download
+            commands::delete_download,
+            commands::get_settings,
+            commands::save_settings,
+            commands::test_qbittorrent,
+            commands::pick_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

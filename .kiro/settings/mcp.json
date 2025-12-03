@@ -95,7 +95,7 @@
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": false,
+      "disabled": true,
       "autoApprove": []
     },
     "typescript": {
@@ -124,7 +124,7 @@
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": false,
+      "disabled": true,
       "autoApprove": []
     },
     "context7": {
@@ -137,7 +137,7 @@
         "CONTEXT7_API_KEY": "ctx7sk-dff56983-6957-4778-89af-a2dfcab18120",
         "FASTMCP_LOG_LEVEL": "ERROR"
       },
-      "disabled": false,
+      "disabled": true,
       "autoApprove": [
         "search_documentation",
         "get_library_docs",

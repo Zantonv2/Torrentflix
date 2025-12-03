@@ -84,6 +84,11 @@ impl JobDatabase {
     pub fn pool(&self) -> &SqlitePool {
         self.database.pool()
     }
+
+    /// Get the underlying database
+    pub fn database(&self) -> Arc<Database> {
+        Arc::clone(&self.database)
+    }
 }
 
 /// Job status

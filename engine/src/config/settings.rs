@@ -12,7 +12,7 @@ impl AppSettings {
         Self {
             download_path: "./downloads".to_string(),
             max_concurrent_downloads: 3,
-            enabled_indexers: vec!["YTS".to_string()],
+            enabled_indexers: vec!["monna".to_string()],
         }
     }
 }

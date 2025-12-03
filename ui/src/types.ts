@@ -8,9 +8,10 @@ export interface UiSearchResult {
   poster_url?: string;
   backdrop_url?: string;
   quality_badge: string;
-  rating?: number; // Primary rating (fallback: TMDB -> IMDb -> Kinopoisk)
+  rating?: number; // Primary rating (fallback: IMDb -> Kinopoisk -> TMDB)
   rating_kinopoisk?: number;
   rating_imdb?: number;
+  rating_tmdb?: number;
   runtime_minutes?: number;
   category?: string; // Movie genre/category
   description?: string; // Movie description/overview

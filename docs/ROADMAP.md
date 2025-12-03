@@ -189,8 +189,7 @@ docs/
 2. ✅ **Define domain models**: `TorrentResult`, `ParsedMedia`, `EnrichedMedia`, `DownloadStatus`, `LibraryItem`.
 3. ✅ **Implement Indexer trait** and a simple static registry + manager that runs indexers concurrently.
 4. ✅ **Port or include guessit-rs** and integrate normalizer pipeline (enhanced pattern-based normalizer with advanced regex patterns).
-5. ✅ **Implement YTS indexer** as a template adapter; test end‑to‑end search → normalization.
-6. ✅ **Implement MonnaIndexer**: Complete indexer with dynamic torrent extraction, metadata parsing, poster URL extraction, and full Netflix-style integration.
+5. ✅ **Implement MonnaIndexer**: Complete indexer with dynamic torrent extraction, metadata parsing, poster URL extraction, and full Netflix-style integration.
 7. ✅ **Add metadata clients**: Basic metadata structure with poster_url field support for UI integration.
 8. ✅ **Implement Rating Manager**: 
    - Kinopoisk API client for rating fetching
@@ -240,34 +239,38 @@ docs/
 
 ---
 
-## 📊 Project Status (December 2025)
+## 📊 Project Status (December 2, 2025)
 
-**ACTUAL Completion**: ~50% | **Production Ready**: ❌ Not Yet (But Getting Close!)
+**ACTUAL Completion**: ~55% | **Production Ready**: ❌ Not Yet (But Very Close!)
 
 ### ✅ What's Working (Completed Features)
 
 #### Core Search & Discovery
-- ✅ Multi-indexer search (Monna2, YTS) with parallel execution
+- ✅ Multi-indexer search (Monna2) with parallel execution
 - ✅ Advanced title normalization (pattern-based guessit-rs port)
-- ✅ TMDB metadata enrichment (posters, descriptions, cast, genres)
+- ✅ TMDB metadata enrichment (posters, descriptions, cast, genres, seasons/episodes)
 - ✅ Deduplication and quality scoring
 - ✅ Netflix-style UI with 5x2 grid layout
 - ✅ Skeleton loading states and WCAG AA accessibility
+- ✅ Feed loading on initial mount (Svelte 5 fix)
 
-#### Rating System (Best-in-Class)
+#### Rating System (Best-in-Class) ✅ **FULLY WORKING**
 - ✅ Multi-source rating aggregation (Kinopoisk + IMDb + TMDB)
 - ✅ 3-worker architecture with dependency management
 - ✅ Dual-layer caching (in-memory + SQLite)
-- ✅ Real-time UI updates via Tauri events
+- ✅ Real-time UI updates via Tauri events (FIXED - channel now set before initialize)
 - ✅ Graceful degradation (works without optional API keys)
 - ✅ Cache-aware worker spawning
+- ✅ All 3 ratings display correctly in UI (KP | IMDB | TMDB)
+- ✅ TV show metadata (seasons/episodes) extracted from TMDB
 
-#### Download Management (Backend Complete)
+#### Download Management ✅ **FULLY WORKING**
 - ✅ qBittorrent WebAPI client (login, add, pause, resume, delete)
 - ✅ Get download status (progress, speed, ETA, seeders, leechers)
 - ✅ Get all active downloads
 - ✅ Tauri commands registered
 - ✅ Engine integration with environment config
+- ✅ Downloads UI tab (DownloadsTab.svelte) - real-time progress updates
 - ✅ Tested and working (see DOWNLOAD_IMPLEMENTATION_PROOF.md)
 
 #### Infrastructure
@@ -275,21 +278,12 @@ docs/
 - ✅ SQLite database with WAL mode
 - ✅ Tauri 2.0 desktop wrapper
 - ✅ Comprehensive documentation (5 spec documents)
+- ✅ Job Manager architecture (immediate execution pattern)
+- ✅ Database schema for job queue (defined, not yet used)
 
-### 🚨 What's Actually Missing (Stop Lying to Yourself)
+### 🚨 What's Actually Missing (Honest Assessment)
 
-#### 1. Download Management ✅ **BACKEND DONE** | ⏳ **UI PENDING**
-**Reality**: Backend fully implemented and tested! qBittorrent client works.
-
-**What exists**: 
-- ✅ qBittorrent WebAPI client (250 lines, tested)
-- ✅ Download commands (start, pause, resume, delete, get_all)
-- ✅ Engine integration with env config
-- ❌ Downloads UI tab (not built yet)
-
-**Effort**: 2-3 hours for UI
-
-#### 2. Library Management ❌ **5% COMPLETE**
+#### 1. Library Management ❌ **0% COMPLETE**
 **Reality**: Database schema exists. That's it. No scanning, no tracking, no UI.
 
 **What exists**: SQL schema in docs
@@ -301,7 +295,7 @@ docs/
 
 **Effort**: 3-4 days of actual work
 
-#### 3. Bookmarks (Wishlist) ❌ **0% COMPLETE**
+#### 2. Bookmarks (Wishlist) ❌ **0% COMPLETE**
 **Purpose**: Bookmark movies that DON'T EXIST YET on indexers. Wait for them to appear with specific quality preferences.
 
 **Features**:
@@ -323,7 +317,7 @@ docs/
 
 **Effort**: 2-3 days
 
-#### 4. History (Analytics) ❌ **0% COMPLETE**
+#### 3. History (Analytics) ❌ **0% COMPLETE**
 **Purpose**: Download statistics and analytics. Show user preferences and download history.
 
 **Features**:
@@ -350,7 +344,7 @@ docs/
 
 **Effort**: 2-3 days
 
-#### 5. Settings UI ❌ **0% COMPLETE**
+#### 4. Settings UI ❌ **0% COMPLETE**
 **Reality**: No settings UI. No settings persistence. Users edit .env files like cavemen.
 
 **What exists**: Nothing
@@ -365,13 +359,36 @@ docs/
 
 **Effort**: 1-2 days
 
-#### 6. Job Queue ❌ **10% COMPLETE**
-**Reality**: "JobManager" is just a wrapper that calls RatingManager immediately. No persistence, no retries, no scheduling.
+#### 5. Job Queue Persistence ⏳ **10% COMPLETE**
+**Reality**: JobManager exists but only wraps RatingManager. No persistent queue, no retries, no scheduling.
 
-**What exists**: Architecture docs (beautiful fiction)
-**What's needed**: Actual implementation
+**What exists**: 
+- Architecture docs (complete)
+- Database schema (defined)
+- RatingManager (immediate execution)
+
+**What's needed**: 
+- Persistent job queue implementation
+- Job scheduler
+- Retry logic with backoff
+- Job dependencies
+- Other worker managers (DownloadManager, MetadataRefreshManager, etc.)
 
 **Effort**: 3-4 days of actual work
+
+#### 6. Monna Indexer Metadata Parsing ⚠️ **NEEDS IMPROVEMENT**
+**Reality**: Current regex patterns are too rigid. Fails on field label variations.
+
+**Issues**:
+- Missing "ГОД:" pattern (uppercase)
+- Missing "СТРАНА:" pattern
+- Missing "Студия:" extraction
+- Missing "Перевод:" extraction
+- Description extraction fails without explicit label
+
+**Effort**: 2-3 hours to fix
+
+**See**: NEXT_SESSION_CONTEXT.md for detailed requirements
 
 ### ⏳ Planned Features (Roadmap)
 

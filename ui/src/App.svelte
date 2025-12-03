@@ -8,6 +8,7 @@
   import DetailPanel from './components/DetailPanel.svelte';
   import LoadingSpinner from './components/LoadingSpinner.svelte';
   import DownloadsTab from './components/DownloadsTab.svelte';
+  import SettingsTab from './components/SettingsTab.svelte';
   import type { UiSearchResult } from './types';
 
   let searchResults: UiSearchResult[] = [];
@@ -141,21 +142,25 @@
       rating: movie.rating 
     });
     
-    // Update ratings
-    if (update.rating_kinopoisk !== undefined) {
+    // Update individual ratings (don't overwrite with 0.0)
+    if (update.rating_kinopoisk !== undefined && update.rating_kinopoisk !== null && update.rating_kinopoisk > 0) {
       movie.rating_kinopoisk = update.rating_kinopoisk;
     }
-    if (update.rating_imdb !== undefined) {
+    if (update.rating_imdb !== undefined && update.rating_imdb !== null && update.rating_imdb > 0) {
       movie.rating_imdb = update.rating_imdb;
     }
-    
-    // Update primary rating (prefer TMDB > IMDb > Kinopoisk)
     if (update.rating_tmdb !== undefined && update.rating_tmdb !== null && update.rating_tmdb > 0) {
-      movie.rating = update.rating_tmdb;
-    } else if (movie.rating_imdb !== undefined && movie.rating_imdb !== null) {
+      movie.rating_tmdb = update.rating_tmdb;
+    }
+    
+    // Recalculate primary rating from ALL available ratings (prefer IMDb > Kinopoisk > TMDB)
+    // TMDB often returns 0.0 for new movies, so prefer IMDb/Kinopoisk when available
+    if (movie.rating_imdb !== undefined && movie.rating_imdb !== null && movie.rating_imdb > 0) {
       movie.rating = movie.rating_imdb;
-    } else if (movie.rating_kinopoisk !== undefined && movie.rating_kinopoisk !== null) {
+    } else if (movie.rating_kinopoisk !== undefined && movie.rating_kinopoisk !== null && movie.rating_kinopoisk > 0) {
       movie.rating = movie.rating_kinopoisk;
+    } else if (movie.rating_tmdb !== undefined && movie.rating_tmdb !== null && movie.rating_tmdb > 0) {
+      movie.rating = movie.rating_tmdb;
     }
     
     console.log('✅ After update:', { 
@@ -175,20 +180,61 @@
   }
 
   let ratingUpdateUnlisten: (() => void) | null = null;
+  let initialized = false;
 
+  // Use a more aggressive initialization approach
+  let mountAttempts = 0;
+  
   onMount(async () => {
+    mountAttempts++;
+    console.log(`🚀 App.svelte onMount() called (attempt ${mountAttempts})`);
+    
+    if (initialized) {
+      console.log('⚠️ Already initialized, skipping');
+      return;
+    }
+    initialized = true;
+    
     document.addEventListener('movieSelect', handleMovieSelect as EventListener);
     
     try {
+      console.log('📡 Setting up rating-update listener...');
       const unlisten = await listen<{ movie_id: string; rating_kinopoisk?: number; rating_imdb?: number; rating_tmdb?: number }>('rating-update', (event) => {
         handleRatingUpdate(event.payload);
       });
       ratingUpdateUnlisten = unlisten;
+      console.log('✅ Rating-update listener set up');
     } catch (error) {
-      console.error('Failed to listen for rating-update events:', error);
+      console.error('❌ Failed to listen for rating-update events:', error);
     }
     
-    loadFeed();
+    // Failsafe: if loading takes more than 10 seconds, show error
+    const failsafeTimeout = setTimeout(() => {
+      if (isInitialLoading) {
+        console.error('⏰ Failsafe triggered: Loading took too long');
+        isInitialLoading = false;
+        isLoading = false;
+        error = 'Загрузка заняла слишком много времени. Попробуйте обновить страницу.';
+      }
+    }, 10000);
+    
+    // Add a small delay to ensure Tauri is fully ready
+    console.log('⏳ Waiting 100ms for Tauri to be ready...');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('🎬 Calling loadFeed()...');
+    try {
+      await loadFeed();
+      console.log('✅ loadFeed() completed successfully');
+    } catch (err) {
+      console.error('❌ loadFeed() failed:', err);
+      // Try one more time after a delay
+      console.log('🔄 Retrying loadFeed() after 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadFeed();
+    }
+    clearTimeout(failsafeTimeout);
+    console.log('✅ onMount() complete');
   });
 
   onDestroy(() => {
@@ -219,6 +265,8 @@
         <!-- Simple switch based on currentTab only -->
         {#if currentTab === 'downloads'}
           <DownloadsTab />
+        {:else if currentTab === 'settings'}
+          <SettingsTab />
         {:else if currentTab === 'feed'}
           {#if isLoading && searchResults.length === 0}
             <MovieGrid movies={[]} loading={true} on:movieSelect={handleMovieSelect} />

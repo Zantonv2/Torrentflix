@@ -108,23 +108,73 @@ impl JobManager {
         }
     }
 
-    /// Claim a job (mark as working)
+    /// Claim a job (mark as working) atomically using transactions
     pub async fn claim_job(&self, job_id: &str) -> Result<Option<Job>> {
-        // Atomically update job status to 'working'
-        let now = chrono::Utc::now().timestamp();
+        use crate::database::transaction::{with_retry, RetryConfig};
         
-        sqlx::query(
+        // Use retry logic for the entire claim operation
+        with_retry(
+            || async {
+                self.claim_job_internal(job_id).await
+            },
+            &RetryConfig::default(),
+        )
+        .await
+    }
+
+    /// Internal implementation of atomic job claiming
+    async fn claim_job_internal(&self, job_id: &str) -> Result<Option<Job>> {
+        use sqlx::Row;
+        
+        // Begin an immediate transaction to acquire write lock
+        let mut tx = self.database.pool().begin().await?;
+        
+        // Lock the row and verify status is still 'pending'
+        // SQLite doesn't support SELECT FOR UPDATE, but BEGIN IMMEDIATE gives us a write lock
+        let row = sqlx::query(
+            r#"
+            SELECT job_id, kind, params, status, priority, attempts, max_attempts,
+                   depends_on, scheduled_at, created_at, started_at, finished_at, 
+                   last_error, result
+            FROM jobs
+            WHERE job_id = ? AND status = 'pending'
+            "#
+        )
+        .bind(job_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        
+        if row.is_none() {
+            // Job already claimed, doesn't exist, or is not pending
+            tx.rollback().await?;
+            return Ok(None);
+        }
+        
+        // Update status to 'working'
+        let now = chrono::Utc::now().timestamp();
+        let result = sqlx::query(
             r#"
             UPDATE jobs
             SET status = 'working', started_at = ?
             WHERE job_id = ? AND status = 'pending'
-            "#,
+            "#
         )
         .bind(now)
         .bind(job_id)
-        .execute(self.database.pool())
+        .execute(&mut *tx)
         .await?;
-
+        
+        // Verify the update succeeded (status verification)
+        if result.rows_affected() == 0 {
+            // Status changed between SELECT and UPDATE
+            tx.rollback().await?;
+            return Ok(None);
+        }
+        
+        // Commit the transaction
+        tx.commit().await?;
+        
+        // Load and return the claimed job
         Job::load(&self.database, job_id).await
     }
 
@@ -272,6 +322,38 @@ impl JobManager {
     /// Get database reference
     pub fn database(&self) -> &Arc<JobDatabase> {
         &self.database
+    }
+
+    /// Get current settings from database
+    pub async fn get_settings(&self) -> Result<crate::settings::models::Settings> {
+        info!("JobManager: Loading settings from database");
+        
+        let settings_db = Arc::new(crate::database::SettingsDatabase::new(self.database.database().clone()));
+        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db);
+        settings_manager.load_settings().await
+    }
+
+    /// Save settings to database with validation
+    pub async fn save_settings(&self, settings: &crate::settings::models::Settings) -> Result<()> {
+        info!("JobManager: Saving settings to database");
+        
+        let settings_db = Arc::new(crate::database::SettingsDatabase::new(self.database.database().clone()));
+        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db);
+        settings_manager.save_settings(settings).await
+    }
+
+    /// Test qBittorrent connection with provided credentials
+    pub async fn test_qbittorrent_connection(
+        &self,
+        url: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<()> {
+        info!("JobManager: Testing qBittorrent connection to {}", url);
+        
+        let settings_db = Arc::new(crate::database::SettingsDatabase::new(self.database.database().clone()));
+        let settings_manager = crate::settings::manager::SettingsManager::new(settings_db);
+        settings_manager.test_qbittorrent_connection(url, username, password).await
     }
 }
 

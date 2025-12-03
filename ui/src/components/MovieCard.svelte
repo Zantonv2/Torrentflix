@@ -91,16 +91,22 @@
           
           <!-- Rating -->
           <div class="flex items-center gap-2 text-xs">
-            {#if movie.rating_kinopoisk || movie.rating_imdb}
+            {#if movie.rating_kinopoisk || movie.rating_imdb || movie.rating_tmdb}
               <span class="text-yellow-400">⭐</span>
               {#if movie.rating_kinopoisk}
                 <span class="text-yellow-400">KP: {movie.rating_kinopoisk.toFixed(1)}</span>
               {/if}
-              {#if movie.rating_kinopoisk && movie.rating_imdb}
+              {#if movie.rating_kinopoisk && (movie.rating_imdb || movie.rating_tmdb)}
                 <span class="text-gray-400">|</span>
               {/if}
               {#if movie.rating_imdb}
                 <span class="text-yellow-400">IMDB: {movie.rating_imdb.toFixed(1)}</span>
+              {/if}
+              {#if movie.rating_imdb && movie.rating_tmdb}
+                <span class="text-gray-400">|</span>
+              {/if}
+              {#if movie.rating_tmdb}
+                <span class="text-yellow-400">TMDB: {movie.rating_tmdb.toFixed(1)}</span>
               {/if}
             {:else if movie.rating}
               <span class="text-yellow-400 mr-1">★</span>

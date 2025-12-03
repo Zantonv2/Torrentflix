@@ -325,6 +325,10 @@ impl TmdbClient {
         if let Some(backdrop_path) = tv.backdrop_path {
             metadata.backdrop_url = Some(format!("{}/w1280{}", image_base_url, backdrop_path));
         }
+        
+        // Set TV show specific fields
+        metadata.number_of_seasons = tv.number_of_seasons.map(|n| n as u32);
+        metadata.number_of_episodes = tv.number_of_episodes.map(|n| n as u32);
 
         // Extract external IDs
         let imdb_id = external_ids

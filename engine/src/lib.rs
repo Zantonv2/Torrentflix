@@ -10,6 +10,7 @@ pub mod library;
 pub mod database;
 pub mod jobs;
 pub mod config;
+pub mod settings;
 pub mod ui;
 pub mod engine;
 pub mod ratings;
