@@ -6,9 +6,10 @@
 
   $: tabs = [
     { id: 'library', label: '📚 Библиотека' },
-    { id: 'history', label: '📋 История' },
+    { id: 'history', label: '📊 Аналитика' },
     { id: 'feed', label: '🎬 Лента' },
-    { id: 'bookmarks', label: '⭐ Закладки' },
+    { id: 'bookmarks', label: '📁 Коллекции' },
+    { id: 'management', label: '🔧 Управление' },
     { id: 'downloads', label: '📥 Загрузки' },
     { id: 'settings', label: '⚙️ Настройки' },
   ];

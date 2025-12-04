@@ -59,3 +59,15 @@ url = "2.5"
 
 # Directory utilities
 dirs = "5.0"
+
+# Hashing
+sha2 = "0.10"
+blake3 = "1.5"
+hex = "0.4"
+
+# Filesystem watching
+notify = "6.1"
+walkdir = "2.4"
+
+# CSV handling
+csv = "1.3"

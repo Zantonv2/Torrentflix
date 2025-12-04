@@ -27,6 +27,12 @@ urlencoding.workspace = true
 dotenvy.workspace = true
 url.workspace = true
 dirs.workspace = true
+sha2.workspace = true
+blake3.workspace = true
+hex.workspace = true
+walkdir.workspace = true
+notify.workspace = true
+csv.workspace = true
 
 [features]
 default = []

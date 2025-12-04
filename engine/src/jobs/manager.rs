@@ -62,6 +62,13 @@ impl JobManager {
         self.register_worker(worker);
     }
 
+    /// Register HashingWorkerManager as a worker
+    pub fn register_hashing_worker(&mut self) {
+        use super::hashing_worker::HashingWorkerManager;
+        let worker = Box::new(HashingWorkerManager::new(self.database.database().clone()));
+        self.register_worker(worker);
+    }
+
     /// Register a worker manager
     pub fn register_worker(&mut self, worker: Box<dyn WorkerManager>) {
         let kind = worker.job_kind().to_string();

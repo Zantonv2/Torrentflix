@@ -14,6 +14,11 @@ use crate::jobs::JobManager;
 use crate::database::Database;
 use crate::ratings::RatingManager;
 use crate::settings::models::Settings;
+use crate::library::manager::LibraryManager;
+use crate::library::models::{
+    MediaItem, FileVersion, LibraryFilters, SearchOptions, 
+    CollectionId, MediaItemId, FileVersionId, FilterCriteria, WatchStatus
+};
 
 /// Rating update message sent to UI
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -34,6 +39,7 @@ pub struct Engine {
     rating_manager: Option<Arc<crate::ratings::RatingManager>>,
     rating_update_tx: Option<mpsc::UnboundedSender<RatingUpdate>>,
     settings: Arc<RwLock<Option<Settings>>>,
+    library_manager: Option<Arc<LibraryManager>>,
 }
 
 impl Engine {
@@ -63,6 +69,7 @@ impl Engine {
             rating_manager: None, // Will be set when RatingManager is created
             rating_update_tx: None,
             settings: Arc::new(RwLock::new(None)), // Will be loaded during initialization
+            library_manager: None, // Will be initialized in initialize() method
         }
     }
 
@@ -87,6 +94,7 @@ impl Engine {
             rating_manager: None, // Will be set when RatingManager is created
             rating_update_tx: None,
             settings: Arc::new(RwLock::new(None)), // Will be loaded during initialization
+            library_manager: None, // Will be initialized in initialize() method
         }
     }
 
@@ -311,6 +319,15 @@ impl Engine {
             warn!("Engine: ⚠️ No TMDB API key available, metadata manager will have limited functionality");
             warn!("Engine: Configure TMDB API key in Settings UI to enable metadata enrichment");
         }
+
+        // Initialize LibraryManager
+        info!("Engine: Initializing LibraryManager");
+        let library_db = Arc::new(crate::library::database::LibraryDatabase::new(database.pool().clone()));
+        info!("✅ Engine: Library database initialized");
+        
+        let library_manager = Arc::new(LibraryManager::new(library_db));
+        self.library_manager = Some(library_manager);
+        info!("✅ Engine: LibraryManager initialized successfully");
 
         Ok(())
     }
@@ -982,6 +999,190 @@ impl Engine {
         } else {
             warn!("Engine: JobManager not initialized, cannot test connection");
             Err(anyhow::anyhow!("JobManager not initialized"))
+        }
+    }
+
+    // ========================================================================
+    // Library Management Methods (Task 48)
+    // ========================================================================
+
+    /// Query library with filters
+    pub async fn query_library(&self, filters: &LibraryFilters) -> Result<Vec<MediaItem>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.query_library(filters).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Search library by text
+    pub async fn search_library(&self, query: &str, options: &SearchOptions) -> Result<Vec<MediaItem>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.search_library(query, options).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Get a specific MediaItem by ID
+    pub async fn get_media_item(&self, id: MediaItemId) -> Result<Option<MediaItem>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.get_media_item(id).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Get all FileVersions for a MediaItem
+    pub async fn get_file_versions(&self, media_id: MediaItemId) -> Result<Vec<FileVersion>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.get_file_versions(media_id).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Stage a file for import
+    pub async fn stage_file(&self, file_path: &str) -> Result<i64> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the import pipeline
+            Err(anyhow::anyhow!("stage_file not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Commit a staged file to the library
+    pub async fn commit_staged_file(&self, staged_id: i64, library_root_id: i64) -> Result<i64> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the import pipeline
+            Err(anyhow::anyhow!("commit_staged_file not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Get all staged files
+    pub async fn get_staged_files(&self) -> Result<Vec<serde_json::Value>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the import pipeline
+            Err(anyhow::anyhow!("get_staged_files not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Schedule a rescan operation
+    pub async fn schedule_rescan(&self, library_root_id: Option<i64>) -> Result<i64> {
+        if let Some(ref job_manager) = self.job_manager {
+            // This would need to be implemented in the job manager
+            Err(anyhow::anyhow!("schedule_rescan not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("JobManager not initialized"))
+        }
+    }
+
+    /// Get cleanup candidates
+    pub async fn get_cleanup_candidates(&self) -> Result<Vec<serde_json::Value>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the maintenance manager
+            Err(anyhow::anyhow!("get_cleanup_candidates not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Execute cleanup operation
+    pub async fn execute_cleanup(&self, candidate_ids: Vec<i64>) -> Result<serde_json::Value> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the maintenance manager
+            Err(anyhow::anyhow!("execute_cleanup not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Get storage analytics
+    pub async fn get_storage_analytics(&self) -> Result<serde_json::Value> {
+        if let Some(ref lib_manager) = self.library_manager {
+            // This would need to be implemented in the maintenance manager
+            Err(anyhow::anyhow!("get_storage_analytics not yet implemented"))
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Create a new collection
+    pub async fn create_collection(&self, name: &str, description: Option<&str>) -> Result<i64> {
+        if let Some(ref lib_manager) = self.library_manager {
+            let collection_id = lib_manager.create_collection(name, description).await?;
+            Ok(collection_id.0)
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Add MediaItems to a collection
+    pub async fn add_to_collection(&self, collection_id: CollectionId, media_ids: &[MediaItemId]) -> Result<()> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.add_to_collection(collection_id, media_ids).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Get MediaItems in a collection
+    pub async fn get_collection_items(&self, collection_id: CollectionId) -> Result<Vec<MediaItem>> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.get_collection_items(collection_id).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Create a smart collection
+    pub async fn create_smart_collection(&self, name: &str, criteria: &FilterCriteria) -> Result<i64> {
+        if let Some(ref lib_manager) = self.library_manager {
+            let collection_id = lib_manager.create_smart_collection(name, criteria).await?;
+            Ok(collection_id.0)
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Set user rating for a MediaItem
+    pub async fn set_user_rating(&self, media_id: MediaItemId, rating: f32) -> Result<()> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.set_user_rating(media_id, rating).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Add tags to a MediaItem
+    pub async fn add_tags(&self, media_id: MediaItemId, tags: &[String]) -> Result<()> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.add_tags(media_id, tags).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Set watch status for a MediaItem
+    pub async fn set_watch_status(&self, media_id: MediaItemId, status: WatchStatus) -> Result<()> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.set_watch_status(media_id, status).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
+        }
+    }
+
+    /// Set custom notes for a MediaItem
+    pub async fn set_custom_notes(&self, media_id: MediaItemId, notes: &str) -> Result<()> {
+        if let Some(ref lib_manager) = self.library_manager {
+            lib_manager.set_custom_notes(media_id, notes).await
+        } else {
+            Err(anyhow::anyhow!("LibraryManager not initialized"))
         }
     }
 }

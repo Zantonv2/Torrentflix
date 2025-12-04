@@ -5,6 +5,12 @@ use tracing::{debug, info, error, warn};
 use engine::Engine;
 use engine::ui::dto::{UiSearchRequest, UiSearchResponse, UiSearchResult};
 use engine::settings::models::Settings;
+use engine::library::models::{
+    MediaItem, FileVersion, LibraryFilters, SearchOptions, 
+    CollectionId, MediaItemId, FileVersionId, FilterCriteria, WatchStatus, Tag
+};
+use engine::library::manager::LibraryManager;
+use std::sync::Arc;
 
 /// Search for movies/series with Netflix-style results
 #[tauri::command]
@@ -387,6 +393,455 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, String
         None => {
             debug!("📁 Tauri: User cancelled folder selection");
             Ok(None)
+        }
+    }
+}
+
+// ============================================================================
+// Library Management Commands (Task 48)
+// ============================================================================
+
+/// Query library with filters
+/// Requirements: 4.1, 4.2, 4.3, 4.4
+#[tauri::command]
+pub async fn query_library(
+    filters: LibraryFilters,
+    engine: State<'_, Engine>,
+) -> Result<Vec<MediaItem>, String> {
+    info!("📚 Tauri: query_library command called");
+    
+    match engine.query_library(&filters).await {
+        Ok(items) => {
+            info!("✅ Query returned {} items", items.len());
+            Ok(items)
+        }
+        Err(e) => {
+            error!("❌ Query failed: {}", e);
+            Err(format!("Failed to query library: {}", e))
+        }
+    }
+}
+
+/// Search library by text
+/// Requirements: 4.3, 20.1, 20.6
+#[tauri::command]
+pub async fn search_library(
+    query: String,
+    options: SearchOptions,
+    engine: State<'_, Engine>,
+) -> Result<Vec<MediaItem>, String> {
+    info!("🔍 Tauri: search_library command called with query: '{}'", query);
+    
+    match engine.search_library(&query, &options).await {
+        Ok(items) => {
+            info!("✅ Search returned {} items", items.len());
+            Ok(items)
+        }
+        Err(e) => {
+            error!("❌ Search failed: {}", e);
+            Err(format!("Failed to search library: {}", e))
+        }
+    }
+}
+
+/// Get a specific MediaItem by ID
+/// Requirements: 4.4
+#[tauri::command]
+pub async fn get_media_item(
+    id: i64,
+    engine: State<'_, Engine>,
+) -> Result<Option<MediaItem>, String> {
+    debug!("📖 Tauri: get_media_item command called for id: {}", id);
+    
+    let media_id = MediaItemId(id);
+    match engine.get_media_item(media_id).await {
+        Ok(item) => {
+            if item.is_some() {
+                info!("✅ MediaItem found: {}", id);
+            } else {
+                debug!("⚠️ MediaItem not found: {}", id);
+            }
+            Ok(item)
+        }
+        Err(e) => {
+            error!("❌ Failed to get MediaItem: {}", e);
+            Err(format!("Failed to get MediaItem: {}", e))
+        }
+    }
+}
+
+/// Get all FileVersions for a MediaItem
+/// Requirements: 4.4
+#[tauri::command]
+pub async fn get_file_versions(
+    media_id: i64,
+    engine: State<'_, Engine>,
+) -> Result<Vec<FileVersion>, String> {
+    debug!("📁 Tauri: get_file_versions command called for media_id: {}", media_id);
+    
+    let id = MediaItemId(media_id);
+    match engine.get_file_versions(id).await {
+        Ok(versions) => {
+            info!("✅ Retrieved {} file versions", versions.len());
+            Ok(versions)
+        }
+        Err(e) => {
+            error!("❌ Failed to get file versions: {}", e);
+            Err(format!("Failed to get file versions: {}", e))
+        }
+    }
+}
+
+// ============================================================================
+// Import Commands (Task 48.2)
+// ============================================================================
+
+/// Stage a file for import
+/// Requirements: 2.1, 2.4
+#[tauri::command]
+pub async fn stage_file(
+    file_path: String,
+    engine: State<'_, Engine>,
+) -> Result<i64, String> {
+    info!("📥 Tauri: stage_file command called for: {}", file_path);
+    
+    match engine.stage_file(&file_path).await {
+        Ok(staged_id) => {
+            info!("✅ File staged successfully: {}", staged_id);
+            Ok(staged_id)
+        }
+        Err(e) => {
+            error!("❌ Failed to stage file: {}", e);
+            Err(format!("Failed to stage file: {}", e))
+        }
+    }
+}
+
+/// Commit a staged file to the library
+/// Requirements: 2.1, 2.4
+#[tauri::command]
+pub async fn commit_staged_file(
+    staged_id: i64,
+    library_root_id: i64,
+    engine: State<'_, Engine>,
+) -> Result<i64, String> {
+    info!("✅ Tauri: commit_staged_file command called for staged_id: {}", staged_id);
+    
+    match engine.commit_staged_file(staged_id, library_root_id).await {
+        Ok(version_id) => {
+            info!("✅ File committed successfully: {}", version_id);
+            Ok(version_id)
+        }
+        Err(e) => {
+            error!("❌ Failed to commit file: {}", e);
+            Err(format!("Failed to commit file: {}", e))
+        }
+    }
+}
+
+/// Get all staged files
+/// Requirements: 2.1, 2.4
+#[tauri::command]
+pub async fn get_staged_files(
+    engine: State<'_, Engine>,
+) -> Result<Vec<serde_json::Value>, String> {
+    debug!("📋 Tauri: get_staged_files command called");
+    
+    match engine.get_staged_files().await {
+        Ok(files) => {
+            info!("✅ Retrieved {} staged files", files.len());
+            Ok(files)
+        }
+        Err(e) => {
+            error!("❌ Failed to get staged files: {}", e);
+            Err(format!("Failed to get staged files: {}", e))
+        }
+    }
+}
+
+// ============================================================================
+// Maintenance Commands (Task 48.3)
+// ============================================================================
+
+/// Schedule a rescan operation
+/// Requirements: 5.1
+#[tauri::command]
+pub async fn schedule_rescan(
+    library_root_id: Option<i64>,
+    engine: State<'_, Engine>,
+) -> Result<i64, String> {
+    info!("🔄 Tauri: schedule_rescan command called");
+    
+    match engine.schedule_rescan(library_root_id).await {
+        Ok(job_id) => {
+            info!("✅ Rescan scheduled: job_id={}", job_id);
+            Ok(job_id)
+        }
+        Err(e) => {
+            error!("❌ Failed to schedule rescan: {}", e);
+            Err(format!("Failed to schedule rescan: {}", e))
+        }
+    }
+}
+
+/// Get cleanup candidates
+/// Requirements: 8.1, 8.2
+#[tauri::command]
+pub async fn get_cleanup_candidates(
+    engine: State<'_, Engine>,
+) -> Result<Vec<serde_json::Value>, String> {
+    info!("🧹 Tauri: get_cleanup_candidates command called");
+    
+    match engine.get_cleanup_candidates().await {
+        Ok(candidates) => {
+            info!("✅ Found {} cleanup candidates", candidates.len());
+            Ok(candidates)
+        }
+        Err(e) => {
+            error!("❌ Failed to get cleanup candidates: {}", e);
+            Err(format!("Failed to get cleanup candidates: {}", e))
+        }
+    }
+}
+
+/// Execute cleanup operation
+/// Requirements: 8.4, 8.5, 8.6
+#[tauri::command]
+pub async fn execute_cleanup(
+    candidate_ids: Vec<i64>,
+    engine: State<'_, Engine>,
+) -> Result<serde_json::Value, String> {
+    info!("🗑️ Tauri: execute_cleanup command called for {} candidates", candidate_ids.len());
+    
+    match engine.execute_cleanup(candidate_ids).await {
+        Ok(report) => {
+            info!("✅ Cleanup completed");
+            Ok(report)
+        }
+        Err(e) => {
+            error!("❌ Cleanup failed: {}", e);
+            Err(format!("Cleanup failed: {}", e))
+        }
+    }
+}
+
+/// Get storage analytics
+/// Requirements: 10.1, 10.2, 10.3
+#[tauri::command]
+pub async fn get_storage_analytics(
+    engine: State<'_, Engine>,
+) -> Result<serde_json::Value, String> {
+    info!("📊 Tauri: get_storage_analytics command called");
+    
+    match engine.get_storage_analytics().await {
+        Ok(analytics) => {
+            info!("✅ Storage analytics retrieved");
+            Ok(analytics)
+        }
+        Err(e) => {
+            error!("❌ Failed to get storage analytics: {}", e);
+            Err(format!("Failed to get storage analytics: {}", e))
+        }
+    }
+}
+
+// ============================================================================
+// Collection Commands (Task 48.4)
+// ============================================================================
+
+/// Create a new collection
+/// Requirements: 19.1, 19.4
+#[tauri::command]
+pub async fn create_collection(
+    name: String,
+    description: Option<String>,
+    engine: State<'_, Engine>,
+) -> Result<i64, String> {
+    info!("📚 Tauri: create_collection command called: '{}'", name);
+    
+    match engine.create_collection(&name, description.as_deref()).await {
+        Ok(collection_id) => {
+            info!("✅ Collection created: {}", collection_id);
+            Ok(collection_id)
+        }
+        Err(e) => {
+            error!("❌ Failed to create collection: {}", e);
+            Err(format!("Failed to create collection: {}", e))
+        }
+    }
+}
+
+/// Add MediaItems to a collection
+/// Requirements: 19.2
+#[tauri::command]
+pub async fn add_to_collection(
+    collection_id: i64,
+    media_ids: Vec<i64>,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("➕ Tauri: add_to_collection command called for collection: {}", collection_id);
+    
+    let coll_id = CollectionId(collection_id);
+    let ids: Vec<MediaItemId> = media_ids.into_iter().map(MediaItemId).collect();
+    
+    match engine.add_to_collection(coll_id, &ids).await {
+        Ok(_) => {
+            info!("✅ Added {} items to collection", ids.len());
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to add items to collection: {}", e);
+            Err(format!("Failed to add items to collection: {}", e))
+        }
+    }
+}
+
+/// Get MediaItems in a collection
+/// Requirements: 19.3
+#[tauri::command]
+pub async fn get_collection_items(
+    collection_id: i64,
+    engine: State<'_, Engine>,
+) -> Result<Vec<MediaItem>, String> {
+    debug!("📖 Tauri: get_collection_items command called for collection: {}", collection_id);
+    
+    let coll_id = CollectionId(collection_id);
+    match engine.get_collection_items(coll_id).await {
+        Ok(items) => {
+            info!("✅ Retrieved {} items from collection", items.len());
+            Ok(items)
+        }
+        Err(e) => {
+            error!("❌ Failed to get collection items: {}", e);
+            Err(format!("Failed to get collection items: {}", e))
+        }
+    }
+}
+
+/// Create a smart collection
+/// Requirements: 19.4, 19.5
+#[tauri::command]
+pub async fn create_smart_collection(
+    name: String,
+    criteria: FilterCriteria,
+    engine: State<'_, Engine>,
+) -> Result<i64, String> {
+    info!("🧠 Tauri: create_smart_collection command called: '{}'", name);
+    
+    match engine.create_smart_collection(&name, &criteria).await {
+        Ok(collection_id) => {
+            info!("✅ Smart collection created: {}", collection_id);
+            Ok(collection_id)
+        }
+        Err(e) => {
+            error!("❌ Failed to create smart collection: {}", e);
+            Err(format!("Failed to create smart collection: {}", e))
+        }
+    }
+}
+
+// ============================================================================
+// User Metadata Commands (Task 48.5)
+// ============================================================================
+
+/// Set user rating for a MediaItem
+/// Requirements: 9.2, 9.6
+#[tauri::command]
+pub async fn set_user_rating(
+    media_id: i64,
+    rating: f32,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("⭐ Tauri: set_user_rating command called for media_id: {}, rating: {}", media_id, rating);
+    
+    let id = MediaItemId(media_id);
+    match engine.set_user_rating(id, rating).await {
+        Ok(_) => {
+            info!("✅ Rating set successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to set rating: {}", e);
+            Err(format!("Failed to set rating: {}", e))
+        }
+    }
+}
+
+/// Add tags to a MediaItem
+/// Requirements: 9.3, 9.4
+#[tauri::command]
+pub async fn add_tags(
+    media_id: i64,
+    tags: Vec<String>,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("🏷️ Tauri: add_tags command called for media_id: {}", media_id);
+    
+    let id = MediaItemId(media_id);
+    match engine.add_tags(id, &tags).await {
+        Ok(_) => {
+            info!("✅ Tags added successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to add tags: {}", e);
+            Err(format!("Failed to add tags: {}", e))
+        }
+    }
+}
+
+/// Set watch status for a MediaItem
+/// Requirements: 9.2, 25.5
+#[tauri::command]
+pub async fn set_watch_status(
+    media_id: i64,
+    status: String,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("👁️ Tauri: set_watch_status command called for media_id: {}, status: {}", media_id, status);
+    
+    let watch_status = match status.as_str() {
+        "unwatched" => WatchStatus::Unwatched,
+        "in_progress" => WatchStatus::InProgress,
+        "watched" => WatchStatus::Watched,
+        _ => {
+            error!("❌ Invalid watch status: {}", status);
+            return Err(format!("Invalid watch status: {}", status));
+        }
+    };
+    
+    let id = MediaItemId(media_id);
+    match engine.set_watch_status(id, watch_status).await {
+        Ok(_) => {
+            info!("✅ Watch status set successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to set watch status: {}", e);
+            Err(format!("Failed to set watch status: {}", e))
+        }
+    }
+}
+
+/// Set custom notes for a MediaItem
+/// Requirements: 9.5, 25.5
+#[tauri::command]
+pub async fn set_custom_notes(
+    media_id: i64,
+    notes: String,
+    engine: State<'_, Engine>,
+) -> Result<(), String> {
+    info!("📝 Tauri: set_custom_notes command called for media_id: {}", media_id);
+    
+    let id = MediaItemId(media_id);
+    match engine.set_custom_notes(id, &notes).await {
+        Ok(_) => {
+            info!("✅ Custom notes set successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to set custom notes: {}", e);
+            Err(format!("Failed to set custom notes: {}", e))
         }
     }
 }

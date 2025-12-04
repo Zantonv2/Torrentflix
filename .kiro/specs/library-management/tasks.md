@@ -1,0 +1,1044 @@
+# Implementation Plan
+
+## Phase 1: Foundation and Data Models
+
+- [x] 1. Set up library management module structure
+  - [x] 1.1 Create `engine/src/library/` directory structure
+  - [x] 1.2 Define module organization (models, manager, queries, database)
+  - [x] 1.3 Set up exports in `mod.rs`
+  - _Requirements: All_
+
+- [x] 2. Implement core data models
+  - [x] 2.1 Create MediaItem and FileVersion Rust structs
+    - Define MediaItem with all fields from design
+    - Define FileVersion with technical metadata
+    - Implement enums (MediaType, FileStatus, WatchStatus, HashingStatus, SourceType)
+    - Add supporting structures (FilesystemInfo, QualityFilters, FilterCriteria)
+    - _Requirements: 1.1, 1.2, 1.3_
+  - [x] 2.2 Create database schema
+    - Write SQL migration for media_items table with indexes
+    - Write SQL migration for file_versions table with indexes
+    - Write SQL migration for library_roots table
+    - Write SQL migration for tags and media_item_tags tables
+    - Write SQL migration for collections and collection_items tables
+    - Write SQL migration for watch_folders table
+    - Write SQL migration for import_profiles table
+    - Write SQL migration for playback_history table
+    - Write SQL migration for audit_log table with indexes
+    - Write SQL migration for notifications table
+    - Write SQL migration for staged_files table
+    - _Requirements: 1.1, 1.2, 12.1, 9.3, 19.1, 16.1, 28.1, 25.1, 14.1, 26.1, 2.1_
+  - [x] 2.3 Write property test for MediaItem creation
+    - **Property 1: MediaItem creation with normalized metadata**
+    - **Validates: Requirements 1.1**
+  - [x] 2.4 Write property test for FileVersion completeness
+    - **Property 2: FileVersion completeness**
+    - **Validates: Requirements 1.2**
+
+## Phase 2: Library Manager Core
+
+- [x] 3. Implement LibraryManager component
+  - [x] 3.1 Create LibraryManager struct and initialization
+    - Implement constructor with database connection
+    - Add configuration management
+    - Set up error types
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+  - [x] 3.2 Implement MediaItem CRUD operations
+    - Implement create_media_item with title normalization
+    - Implement get_media_item query
+    - Implement update_media_item
+    - Implement delete_media_item with cascade
+    - _Requirements: 1.1, 4.1_
+  - [x] 3.3 Write property test for version-to-MediaItem association
+    - **Property 3: Version-to-MediaItem association**
+    - **Validates: Requirements 1.3**
+  - [x] 3.4 Implement FileVersion operations
+    - Implement add_file_version
+    - Implement get_file_versions query
+    - Implement update_file_version
+    - Implement set_preferred_version
+    - _Requirements: 1.2, 1.4, 1.5_
+  - [x] 3.5 Write property test for version retrieval
+    - **Property 4: Version retrieval completeness**
+    - **Validates: Requirements 1.4**
+  - [x] 3.6 Write property test for preferred flag persistence
+    - **Property 5: Preferred flag persistence**
+    - **Validates: Requirements 1.5**
+
+- [x] 4. Implement library querying and filtering
+  - [x] 4.1 Create query builder for library filters
+    - Implement LibraryFilters struct
+    - Build SQL queries with dynamic WHERE clauses
+    - Add support for title, year, resolution, quality, status, tags, rating filters
+    - _Requirements: 4.2, 4.3, 4.5_
+  - [x] 4.2 Implement query_library method
+    - Execute filtered queries with pagination
+    - Return MediaItems with version counts and total sizes
+    - Apply sorting (title, year, added date, size, version count, rating)
+    - _Requirements: 4.1, 4.2, 4.5_
+  - [x] 4.3 Write property test for filter application
+    - **Property 18: Filter application correctness**
+    - **Validates: Requirements 4.2**
+  - [x] 4.4 Implement search_library method
+    - Perform case-insensitive text search on normalized titles
+    - Search across multiple fields (title, original title, cast, director, notes)
+    - Support fuzzy matching with Levenshtein distance
+    - _Requirements: 4.3, 20.1, 20.6_
+  - [x] 4.5 Write property test for case-insensitive search
+    - **Property 19: Case-insensitive search**
+    - **Validates: Requirements 4.3**
+  - [x] 4.6 Write property test for sort order
+    - **Property 21: Sort order correctness**
+    - **Validates: Requirements 4.5**
+
+- [x] 5. Implement user metadata management
+  - [x] 5.1 Implement user rating operations
+    - Implement set_user_rating
+    - Validate rating range (0.0-10.0)
+    - Update MediaItem record
+    - _Requirements: 9.2, 9.6_
+  - [x] 5.2 Implement tag management
+    - Implement add_tags with tag creation
+    - Implement remove_tags
+    - Implement get_tags_for_media
+    - Implement filter_by_tags query
+    - _Requirements: 9.3, 9.4_
+  - [x] 5.3 Write property test for tag storage and filtering
+    - **Property 49: Tag storage and retrieval**
+    - **Property 50: Tag filtering correctness**
+    - **Validates: Requirements 9.3, 9.4**
+  - [x] 5.4 Implement watch status and notes
+    - Implement set_watch_status
+    - Implement set_custom_notes
+    - Implement search_by_notes
+    - _Requirements: 9.2, 9.5, 25.3_
+  - [x] 5.5 Write property test for user metadata persistence
+    - **Property 48: User metadata persistence**
+    - **Validates: Requirements 9.2**
+
+- [x] 6. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## Phase 3: Import Pipeline
+
+- [x] 7. Implement file staging
+  - [x] 7.1 Create ImportPipeline struct
+    - Set up staging directory management
+    - Initialize library roots configuration
+    - Set up database connection
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+  - [x] 7.2 Implement stage_file operation
+    - Copy or move file to staging directory
+    - Create StagedFile record in database
+    - Generate unique staging filename
+    - _Requirements: 2.1_
+  - [x] 7.3 Write property test for staging isolation
+    - **Property 6: Staging directory isolation**
+    - **Validates: Requirements 2.1**
+
+- [x] 8. Implement metadata probing
+  - [x] 8.1 Create MetadataProber component
+    - Set up ffprobe integration
+    - Implement probe_file method
+    - Parse ffprobe JSON output
+    - Extract video, audio, subtitle information
+    - _Requirements: 2.2_
+  - [x] 8.2 Implement probe_staged_file
+    - Call MetadataProber for staged files
+    - Store TechnicalMetadata in staged_files table
+    - Update staging status to "ready"
+    - _Requirements: 2.2_
+  - [x] 8.3 Write property test for metadata probing
+    - **Property 7: Metadata probing completeness**
+    - **Validates: Requirements 2.2**
+
+- [x] 9. Implement file hashing
+  - [x] 9.1 Create FileHasher component
+    - Implement compute_fast_hash (first 1MB + last 1MB + size)
+    - Implement compute_full_hash with SHA-256 and BLAKE3 support
+    - Use HDD-optimized buffer sizes (1MB+)
+    - _Requirements: 2.3, 3.2, 3.4_
+  - [x] 9.2 Implement compute_fast_fingerprint
+    - Call FileHasher for staged files
+    - Store fast_hash in staged_files table
+    - _Requirements: 2.3_
+  - [x] 9.3 Write property test for fingerprint computation
+    - **Property 8: Fast fingerprint computation**
+    - **Validates: Requirements 2.3**
+
+- [x] 10. Implement atomic commit
+  - [x] 10.1 Implement commit_staged_file
+    - Begin database transaction
+    - Create or find MediaItem by normalized title/year
+    - Generate target path with consistent naming scheme
+    - Atomically move file to library root (rename within same filesystem)
+    - Create FileVersion record with status "present"
+    - Commit transaction
+    - Remove from staging on success
+    - _Requirements: 2.4, 2.6, 2.7_
+  - [x] 10.2 Implement rollback_staged_file
+    - Handle commit failures
+    - Rollback database transaction
+    - Keep file in staging with error status
+    - Log error details
+    - _Requirements: 2.5_
+  - [x] 10.3 Write property test for atomic commit
+    - **Property 9: Atomic commit operation**
+    - **Validates: Requirements 2.4, 2.5**
+  - [x] 10.4 Write property test for post-commit state
+    - **Property 10: Post-commit database state**
+    - **Validates: Requirements 2.6**
+  - [x] 10.5 Write property test for staging cleanup
+    - **Property 11: Staging cleanup**
+    - **Validates: Requirements 2.7**
+
+- [x] 11. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 4: Background Hashing and Duplicate Detection
+
+- [x] 12. Implement background hashing jobs
+  - [x] 12.1 Create hashing job worker
+    - Query FileVersions with hashing_status "pending"
+    - Limit concurrency to 1 file at a time
+    - Compute full-file hash using FileHasher
+    - Update FileVersion with hash and status "complete"
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 12.2 Write property test for initial hashing status
+    - **Property 12: Initial hashing status**
+    - **Validates: Requirements 3.1**
+  - [x] 12.3 Write property test for hash computation
+    - **Property 13: Hash computation for pending versions**
+    - **Validates: Requirements 3.2**
+  - [x] 12.4 Write property test for concurrency limit
+    - **Property 14: Hashing concurrency limit**
+    - **Validates: Requirements 3.3**
+  - [x] 12.5 Write property test for hash storage
+    - **Property 15: Hash storage and status update**
+    - **Validates: Requirements 3.4**
+
+- [x] 13. Implement duplicate detection
+  - [x] 13.1 Implement get_duplicates method
+    - Query FileVersions grouped by full_hash
+    - Identify exact duplicates (same hash)
+    - Identify variants (same MediaItem, different versions)
+    - Return DuplicateGroup structures
+    - _Requirements: 3.6, 6.1, 6.2_
+  - [x] 13.2 Write property test for duplicate identification
+    - **Property 16: Duplicate identification by hash**
+    - **Property 28: Exact duplicate detection**
+    - **Validates: Requirements 3.6, 6.1**
+  - [x] 13.3 Write property test for variant detection
+    - **Property 29: Variant detection**
+    - **Validates: Requirements 6.2**
+
+- [x] 14. Implement quality scoring
+  - [x] 14.1 Create QualityScorer component
+    - Implement score_version method
+    - Calculate resolution score (4K > 1080p > 720p > SD)
+    - Calculate codec score (H.265 > H.264 > others)
+    - Calculate source score (BluRay > WEB-DL > HDTV > DVD)
+    - Calculate size score (prefer reasonable sizes, penalize extremes)
+    - Combine scores with configurable weights
+    - _Requirements: 6.4, 6.5_
+  - [x] 14.2 Implement version ranking
+    - Implement rank_versions method
+    - Sort versions by quality score
+    - Respect user-set preferred flag
+    - _Requirements: 6.4, 6.5, 6.6_
+  - [x] 14.3 Write property test for quality scoring
+    - **Property 31: Quality score calculation**
+    - **Validates: Requirements 6.4**
+  - [x] 14.4 Write property test for default recommendation
+    - **Property 32: Default version recommendation**
+    - **Validates: Requirements 6.5**
+  - [x] 14.5 Write property test for preferred override
+    - **Property 33: Preferred version override**
+    - **Validates: Requirements 6.6**
+
+- [x] 15. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## Phase 5: Maintenance Manager
+
+- [x] 16. Implement rescan operations
+  - [x] 16.1 Create MaintenanceManager struct
+    - Set up library roots access
+    - Initialize job manager integration
+    - Set up database connection
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.6, 5.7_
+  - [x] 16.2 Implement perform_rescan
+    - Recursively walk library root directories
+    - Detect new files not in database
+    - Detect missing files (in DB but not on disk)
+    - Update FileVersion status to "missing" for missing files
+    - Flag MediaItems as incomplete when all versions missing
+    - Generate RescanReport with counts
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.6_
+  - [x] 16.3 Write property test for directory traversal
+    - **Property 22: Rescan directory traversal**
+    - **Validates: Requirements 5.1**
+  - [x] 16.4 Write property test for new file detection
+    - **Property 23: New file detection**
+    - **Validates: Requirements 5.2**
+  - [x] 16.5 Write property test for missing file detection
+    - **Property 24: Missing file detection**
+    - **Validates: Requirements 5.3**
+  - [x] 16.6 Write property test for incomplete MediaItem flagging
+    - **Property 25: Incomplete MediaItem flagging**
+    - **Validates: Requirements 5.4**
+  - [x] 16.7 Write property test for rescan report accuracy
+    - **Property 26: Rescan report accuracy**
+    - **Validates: Requirements 5.6**
+
+- [x] 17. Implement integrity checking
+  - [x] 17.1 Implement verify_file_integrity
+    - Check if file exists at recorded path
+    - Verify file size matches recorded size
+    - Optionally verify checksum if stored
+    - Return IntegrityResult (pass/fail with details)
+    - _Requirements: 5.7, 23.2, 23.3_
+  - [x] 17.2 Implement schedule_integrity_check job
+    - Query FileVersions for verification
+    - Verify checksums in batches
+    - Mark corrupted files with corruption_detected_at
+    - Create alert notifications for corruption
+    - _Requirements: 5.7, 23.2, 23.3, 23.4_
+  - [x] 17.3 Write property test for integrity verification
+    - **Property 27: Integrity check verification**
+    - **Property 122: Integrity verification detection**
+    - **Validates: Requirements 5.7, 23.2**
+  - [x] 17.4 Write property test for corruption alert
+    - **Property 123: Corruption alert creation**
+    - **Validates: Requirements 23.3, 23.4**
+
+- [x] 18. Implement soft delete and trash management
+  - [x] 18.1 Implement soft_delete_version
+    - Update FileVersion status to "trashed"
+    - Record trashed_at timestamp and original_path
+    - Move file to trash directory
+    - Create audit log entry
+    - _Requirements: 7.1, 7.2, 7.3_
+  - [x] 18.2 Write property test for soft delete
+    - **Property 34: Soft delete operation**
+    - **Property 35: Trash metadata preservation**
+    - **Property 36: Audit log creation for deletion**
+    - **Validates: Requirements 7.1, 7.2, 7.3**
+  - [x] 18.3 Implement trash filtering and restore
+    - Exclude trashed items from default queries
+    - Implement get_trashed_versions query
+    - Implement restore_from_trash (move back, update status)
+    - Check grace period before restore
+    - _Requirements: 7.4, 7.5, 7.6_
+  - [x] 18.4 Write property test for trash exclusion
+    - **Property 37: Trashed item exclusion**
+    - **Validates: Requirements 7.4**
+  - [x] 18.5 Write property test for restore within grace period
+    - **Property 39: Restore within grace period**
+    - **Validates: Requirements 7.6**
+  - [x] 18.6 Implement purge_trash
+    - Query trashed FileVersions older than grace period
+    - Permanently delete files
+    - Remove FileVersion records
+    - Generate PurgeReport
+    - _Requirements: 7.7_
+  - [x] 18.7 Write property test for cleanup candidate identification
+    - **Property 40: Cleanup candidate identification**
+    - **Validates: Requirements 7.7**
+
+- [x] 19. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 6: Cleanup and Space Management
+
+- [x] 20. Implement cleanup operations
+  - [x] 20.1 Implement identify_cleanup_candidates
+    - Identify exact duplicates by hash
+    - Identify lower-quality variants by quality score
+    - Identify trashed files past grace period
+    - Identify missing file records
+    - Return CleanupCandidate list with reasons
+    - _Requirements: 8.1, 8.2_
+  - [x] 20.2 Write property test for candidate types
+    - **Property 41: Cleanup candidate types**
+    - **Validates: Requirements 8.1**
+  - [x] 20.3 Implement estimate_space_savings
+    - Sum file sizes of all candidates
+    - Account for keeping one copy of duplicates
+    - Return total bytes that would be freed
+    - _Requirements: 8.3_
+  - [x] 20.4 Write property test for space calculation
+    - **Property 43: Space savings calculation**
+    - **Validates: Requirements 8.3**
+  - [x] 20.5 Implement execute_cleanup
+    - Permanently delete selected files
+    - Remove FileVersion records
+    - Log errors for failed deletions
+    - Continue with remaining files on error
+    - Generate CleanupReport with results
+    - _Requirements: 8.4, 8.5, 8.6_
+  - [x] 20.6 Write property test for cleanup execution
+    - **Property 44: Cleanup execution completeness**
+    - **Property 45: Cleanup error handling**
+    - **Validates: Requirements 8.4, 8.5**
+
+- [x] 21. Implement storage analytics
+  - [x] 21.1 Implement storage statistics queries
+    - Calculate total library size
+    - Count MediaItems and FileVersions
+    - Calculate average versions per media
+    - Group by resolution, quality label, status
+    - _Requirements: 10.1, 10.2_
+  - [x] 21.2 Write property test for analytics accuracy
+    - **Property 53: Analytics calculation accuracy**
+    - **Property 54: Storage breakdown accuracy**
+    - **Validates: Requirements 10.1, 10.2**
+  - [x] 21.3 Implement duplicate space calculation
+    - Identify duplicate groups
+    - Calculate wasted space (total - one copy per group)
+    - _Requirements: 10.3_
+  - [x] 21.4 Write property test for duplicate space
+    - **Property 55: Duplicate space calculation**
+    - **Validates: Requirements 10.3**
+  - [x] 21.5 Implement disk usage monitoring
+    - Check disk space against threshold
+    - Create notification when threshold exceeded
+    - Suggest cleanup candidates
+    - _Requirements: 8.7, 26.3_
+  - [x] 21.6 Write property test for threshold notification
+    - **Property 47: Disk usage threshold notification**
+    - **Validates: Requirements 8.7**
+
+- [x] 22. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## Phase 7: Collections and Smart Collections
+
+- [x] 23. Implement collection management
+  - [x] 23.1 Implement create_collection
+    - Create Collection record
+    - Store name, description, timestamps
+    - Support manual and smart collection types
+    - _Requirements: 19.1, 19.4_
+  - [x] 23.2 Write property test for collection creation
+    - **Property 97: Collection creation**
+    - **Property 100: Smart collection criteria storage**
+    - **Validates: Requirements 19.1, 19.4**
+  - [x] 23.3 Implement add_to_collection
+    - Create collection_items associations
+    - Support batch addition
+    - _Requirements: 19.2_
+ -  [x] 23.4 Write property test for collection association
+    - **Property 98: Collection association**
+    - **Validates: Requirements 19.2**
+  - [x] 23.5 Implement get_collection_items
+    - Query MediaItems in collection
+    - Apply standard library filters
+    - _Requirements: 19.3_
+  - [x] 23.6 Write property test for collection retrieval
+    - **Property 99: Collection item retrieval**
+    - **Validates: Requirements 19.3**
+
+- [x] 24. Implement smart collections
+  - [x] 24.1 Implement create_smart_collection
+    - Store FilterCriteria as JSON
+    - Support title patterns, year ranges, quality labels, tags, ratings
+    - _Requirements: 19.4_
+  - [x] 24.2 Implement smart collection dynamic querying
+    - Parse stored FilterCriteria
+    - Build and execute dynamic query
+    - Return matching MediaItems
+    - _Requirements: 19.5_
+  - [x] 24.3 Write property test for smart collection querying
+    - **Property 101: Smart collection dynamic querying**
+    - **Validates: Requirements 19.5**
+  - [x] 24.4 Implement smart collection auto-update
+    - Trigger on MediaItem creation/update
+    - Check all smart collections for criteria match
+    - Auto-add to matching collections
+    - _Requirements: 19.6, 19.7_
+  - [x] 24.5 Write property test for auto-update
+    - **Property 102: Smart collection auto-update**
+    - **Property 103: Multi-collection membership**
+    - **Validates: Requirements 19.6, 19.7**
+  - [x] 24.6 Implement collection export
+    - Generate file list with paths and metadata
+    - Support JSON and CSV formats
+    - _Requirements: 19.8_
+  - [x] 24.7 Write property test for export completeness
+    - **Property 104: Collection export completeness**
+    - **Validates: Requirements 19.8**
+
+- [x] 25. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 8: Watch Folders and Automation
+
+- [x] 26. Implement watch folder monitoring
+  - [x] 26.1 Create WatchFolderMonitor component
+    - Set up inotify integration for Linux
+    - Initialize watch folder registry
+    - Set up event handling loop
+    - _Requirements: 16.1, 16.2, 16.3, 16.4_
+  - [x] 26.2 Implement add_watch
+    - Register directory with inotify
+    - Store watch folder configuration
+    - Optionally perform initial scan
+    - Support recursive monitoring
+    - _Requirements: 16.1, 16.4, 16.5_
+  - [x] 26.3 Write property test for watch setup
+    - **Property 82: Watch folder monitoring setup**
+    - **Property 85: Recursive watch monitoring**
+    - **Validates: Requirements 16.1, 16.4**
+  - [x] 26.4 Implement handle_event
+    - Detect file write completion (no more modifications)
+    - Trigger automatic import to staging
+    - Begin metadata probing
+    - _Requirements: 16.2, 16.3_
+  - [x] 26.5 Write property test for write completion
+    - **Property 83: Write completion detection**
+    - **Property 84: Automatic import trigger**
+    - **Validates: Requirements 16.2, 16.3**
+  - [x] 26.6 Implement failed import handling
+    - Move failed files to failed imports directory
+    - Log error details
+    - Create notification
+    - _Requirements: 16.6, 26.5_
+  - [x] 26.7 Write property test for failure handling
+    - **Property 87: Failed import handling**
+    - **Validates: Requirements 16.6**
+
+- [x] 27. Implement import profiles
+  - [x] 27.1 Create ImportProfile model and storage
+    - Store profile configuration in database
+    - Support file patterns (glob/regex)
+    - Support quality filters
+    - Support auto-tags and target collections
+    - _Requirements: 28.1, 28.2, 28.3, 28.4, 28.5_
+  - [x] 27.2 Implement match_import_profile
+    - Match file path against profile patterns
+    - Apply priority-based selection
+    - Return matched profile or None
+    - _Requirements: 28.2, 28.6_
+  - [x] 27.3 Write property test for profile matching
+    - **Property 138: Import profile pattern matching**
+    - **Property 142: Profile priority resolution**
+    - **Validates: Requirements 28.2, 28.6**
+  - [x] 27.4 Implement apply_import_rules
+    - Apply auto-tags from profile
+    - Apply quality filtering
+    - Set target collection
+    - Set target library root
+    - _Requirements: 28.3, 28.4, 28.5_
+  - [x] 27.5 Write property test for rule application
+    - **Property 139: Automatic tagging from profile**
+    - **Property 140: Quality filtering from profile**
+    - **Property 141: Profile collection assignment**
+    - **Validates: Requirements 28.3, 28.4, 28.5**
+
+- [x] 28. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## Phase 9: Linux Filesystem Integration
+
+- [x] 29. Implement symbolic and hard link support
+  - [x] 29.1 Implement symlink detection and resolution
+    - Detect symbolic links during scanning
+    - Resolve link targets
+    - Store both link path and target path
+    - Handle broken links (mark as missing)
+    - _Requirements: 17.1, 17.2, 17.4_
+  - [x] 29.2 Write property test for symlink handling
+    - **Property 89: Symlink target resolution**
+    - **Property 90: Symlink path storage**
+    - **Property 92: Broken symlink handling**
+    - **Validates: Requirements 17.1, 17.2, 17.4**
+  - [x] 29.3 Implement hard link detection
+    - Read file inode
+    - Detect shared inodes
+    - Associate multiple paths with same FileVersion
+    - _Requirements: 17.3_
+  - [x] 29.4 Write property test for hardlink detection
+    - **Property 91: Hard link inode detection**
+    - **Validates: Requirements 17.3**
+
+- [x] 30. Implement Linux filesystem features
+  - [x] 30.1 Implement POSIX path handling
+    - Handle Linux path separators correctly
+    - Support hidden files (dot-prefixed)
+    - Handle case-sensitive filenames
+    - _Requirements: 18.2_
+  - [x] 30.2 Write property test for path handling
+    - **Property 94: POSIX path handling**
+    - **Validates: Requirements 18.2**
+  - [x] 30.3 Implement atomic operations
+    - Use rename() for atomic moves within same filesystem
+    - Detect mount point boundaries
+    - Use copy-then-delete for cross-mount moves
+    - _Requirements: 18.5, 18.6_
+  - [x] 30.4 Write property test for atomic operations
+    - **Property 95: Atomic rename within filesystem**
+    - **Property 96: Cross-mount-point detection**
+    - **Validates: Requirements 18.5, 18.6**
+  - [x] 30.5 Implement filesystem-specific optimizations
+    - Detect filesystem type (ext4, btrfs, xfs)
+    - Use reflinks for efficient copying on btrfs/xfs when available
+    - Optionally use extended attributes for metadata
+    - _Requirements: 18.4, 18.7_
+
+- [x] 31. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 10: Audit Logging and Notifications
+
+- [x] 32. Implement audit logging
+  - [x] 32.1 Create AuditLogger component
+    - Implement log_operation method
+    - Store operation type, entity type, entity ID
+    - Store old and new values as JSON
+    - Store initiator (user or system job)
+    - _Requirements: 14.1, 14.2, 14.3, 14.5_
+  - [x] 32.2 Write property test for audit log completeness
+    - **Property 76: Audit log entry completeness**
+    - **Property 77: Move operation logging**
+    - **Property 78: Deletion logging**
+    - **Property 80: Error logging**
+    - **Validates: Requirements 14.1, 14.2, 14.3, 14.5**
+  - [x] 32.3 Implement audit log querying
+    - Query with filters (operation type, date range, entity)
+    - Return in reverse chronological order
+    - Support pagination
+    - _Requirements: 14.4_
+  - [x] 32.4 Write property test for log query ordering
+    - **Property 79: Audit log query ordering**
+    - **Validates: Requirements 14.4**
+  - [x] 32.5 Implement audit log archival
+    - Monitor log size
+    - Archive old entries when threshold exceeded
+    - Maintain configurable retention period
+    - _Requirements: 14.6_
+  - [x] 32.6 Write property test for log archival
+    - **Property 81: Audit log archival**
+    - **Validates: Requirements 14.6**
+
+- [x] 33. Implement notification system
+  - [x] 33.1 Create NotificationManager component
+    - Set up notification storage
+    - Implement Linux desktop integration (libnotify/D-Bus)
+    - Support fallback for non-desktop environments
+    - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5_
+  - [x] 33.2 Implement send_notification
+    - Create notification record
+    - Send to desktop notification system
+    - Store in database
+    - _Requirements: 26.1, 26.2, 26.3, 26.4, 26.5_
+  - [x] 33.3 Write property test for notification creation
+    - **Property 133: Job completion notification**
+    - **Property 134: Corruption alert priority**
+    - **Property 135: Disk space warning**
+    - **Property 136: Missing file notification**
+    - **Property 137: Watch folder failure notification**
+    - **Validates: Requirements 26.1, 26.2, 26.3, 26.4, 26.5**
+  - [x] 33.4 Implement notification management
+    - Implement get_unread_notifications
+    - Implement mark_as_read
+    - Implement dismiss_notification
+    - Implement cleanup_old_notifications
+    - _Requirements: 26.6, 26.7_
+
+- [x] 34. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 11: Advanced Features
+
+- [x] 35. Implement advanced search
+  - [x] 35.1 Implement multi-field search
+    - Search across title, original title, alternative titles
+    - Search cast names, director names
+    - Search custom notes
+    - _Requirements: 20.1_
+  - [x] 35.2 Write property test for multi-field search
+    - **Property 105: Multi-field search**
+    - **Validates: Requirements 20.1**
+  - [x] 35.3 Implement saved searches
+    - Store search queries and filters
+    - Implement quick reuse of saved searches
+    - _Requirements: 20.3_
+  - [x] 35.4 Write property test for saved search persistence
+    - **Property 107: Saved search persistence**
+    - **Validates: Requirements 20.3**
+  - [x] 35.5 Implement fuzzy search
+    - Calculate Levenshtein distance for title matching
+    - Return approximate matches
+    - Rank by similarity score
+    - _Requirements: 20.6_
+  - [x] 35.6 Write property test for fuzzy matching
+    - **Property 110: Fuzzy search matching**
+    - **Validates: Requirements 20.6**
+
+  [ ] 36. Implement batch operations
+  - [x] 36.1 Implement batch tag application
+    - Apply tags to multiple MediaItems
+    - Show progress for large batches
+    - _Requirements: 21.2_
+  - [x] 36.2 Write property test for batch tagging
+    - **Property 111: Batch tag application**
+    - **Validates: Requirements 21.2**
+  - [x] 36.3 Implement batch rating and collection assignment
+    - Batch update user ratings
+    - Batch add to collections
+    - _Requirements: 21.3, 21.4_
+  - [x] 36.4 Write property test for batch operations
+    - **Property 112: Batch rating assignment**
+    - **Property 113: Batch collection assignment**
+    - **Validates: Requirements 21.3, 21.4**
+  - [x] 36.5 Implement batch deletion
+    - Soft-delete multiple FileVersions
+    - Create audit log entries for each
+    - Handle errors gracefully
+    - _Requirements: 21.5, 21.7_
+  - [x] 36.6 Write property test for batch deletion
+    - **Property 114: Batch deletion**
+    - **Property 115: Batch operation error handling**
+    - **Validates: Requirements 21.5, 21.7**
+
+- [x] 37. Implement export and backup
+  - [x] 37.1 Implement metadata export
+    - Export MediaItems and FileVersions to JSON/CSV
+    - Include all metadata fields
+    - Support export profiles with filters
+    - _Requirements: 22.1, 22.4_
+  - [x] 37.2 Write property test for export completeness
+    - **Property 116: Metadata export completeness**
+    - **Property 119: Export profile filtering**
+    - **Validates: Requirements 22.1, 22.4**
+  - [x] 37.3 Implement full library export
+    - Include collections, tags, ratings, notes
+    - Include audit logs
+    - Optionally include cached artwork
+    - _Requirements: 22.2, 22.3_
+  - [x] 37.4 Write property test for full export
+    - **Property 117: Full library export**
+    - **Property 118: Backup creation**
+    - **Validates: Requirements 22.2, 22.3**
+  - [x] 37.5 Implement metadata import
+    - Parse exported JSON/CSV
+    - Merge with existing library data
+    - Resolve conflicts based on user preference
+    - _Requirements: 22.5_
+  - [x] 37.6 Write property test for import merge
+    - **Property 120: Import merge behavior**
+    - **Validates: Requirements 22.5**
+
+- [x] 38. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+
+## Phase 12: Metadata and Playback
+
+- [x] 39. Implement metadata editing
+  - [x] 39.1 Implement manual metadata editing
+    - Allow editing of title, year, overview, genres, cast, director
+    - Mark edited fields to prevent auto-overwrite
+    - Persist changes immediately
+    - _Requirements: 24.1, 24.2_
+  - [x] 39.2 Write property test for edit persistence
+    - **Property 125: Metadata edit persistence**
+    - **Validates: Requirements 24.2**
+  - [x] 39.3 Implement metadata field reset
+    - Restore original values from providers or parsed data
+    - Clear user-edited flag
+    - _Requirements: 24.3_
+  - [x] 39.4 Write property test for field reset
+    - **Property 126: Metadata field reset**
+    - **Validates: Requirements 24.3**
+  - [x] 39.5 Implement alternative titles and custom artwork
+    - Store multiple title variants
+    - Upload and store custom posters/backdrops
+    - Use in search matching
+    - _Requirements: 24.5, 24.6_
+  - [x] 39.6 Write property test for alternative titles
+    - **Property 127: Alternative title storage**
+    - **Property 128: Custom artwork storage**
+    - **Validates: Requirements 24.5, 24.6**
+
+- [x] 40. Implement playback integration
+  - [x] 40.1 Implement playback tracking
+    - Record playback events with timestamps
+    - Store playback position for resume
+    - Track per-version playback history
+    - _Requirements: 25.1, 25.2, 25.4_
+  - [x] 40.2 Write property test for playback recording
+    - **Property 129: Playback event recording**
+    - **Property 130: Playback position storage**
+    - **Property 132: Per-version playback tracking**
+    - **Validates: Requirements 25.1, 25.2, 25.4**
+  - [x] 40.3 Implement watch status management
+    - Update watch status based on playback
+    - Allow manual watch status setting
+    - Display watch status and last watched date
+    - _Requirements: 25.3, 25.5_
+  - [x] 40.4 Write property test for watch status
+    - **Property 131: Watch status display**
+    - **Validates: Requirements 25.3**
+  - [x] 40.5 Implement media player integration
+    - Launch configured media player with file path
+    - Support resume from last position
+    - _Requirements: 25.6, 25.7_
+
+- [x] 41. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 13: Database Maintenance and Optimization
+
+- [x] 42. Implement database maintenance
+  - [x] 42.1 Implement VACUUM operation
+    - Schedule VACUUM during idle periods
+    - Reclaim space from deleted records
+    - Monitor database size
+    - _Requirements: 29.1_
+  - [x] 42.2 Write property test for VACUUM
+    - **Property 143: VACUUM space reclamation**
+    - **Validates: Requirements 29.1**
+  - [x] 42.3 Implement index optimization
+    - Analyze query performance
+    - Rebuild indexes when needed
+    - Update statistics
+    - _Requirements: 29.2_
+  - [x] 42.4 Write property test for index optimization
+    - **Property 144: Index optimization**
+    - **Validates: Requirements 29.2**
+  - [x] 42.5 Implement orphaned record cleanup
+    - Identify records not associated with any MediaItem/FileVersion
+    - Optionally remove orphaned records
+    - Generate cleanup statistics
+    - _Requirements: 29.3_
+  - [x] 42.6 Write property test for orphan cleanup
+    - **Property 145: Orphaned record cleanup**
+    - **Validates: Requirements 29.3**
+  - [x] 42.7 Implement database corruption recovery
+    - Run SQLite integrity checks
+    - Attempt automatic recovery
+    - Restore from backup if needed
+    - _Requirements: 29.5_
+  - [x] 42.8 Write property test for corruption recovery
+    - **Property 146: Corruption recovery**
+    - **Validates: Requirements 29.5**
+
+- [x] 43. Implement HDD performance optimizations
+  - [x] 43.1 Implement I/O batching
+    - Batch file operations to minimize seeks
+    - Sort operations by physical disk location when possible
+    - Use large read buffers (1MB+)
+    - _Requirements: 27.1, 27.2, 27.4_
+  - [x] 43.2 Implement I/O throttling
+    - Limit concurrent I/O operations
+    - Detect HDD vs SSD storage
+    - Auto-adjust concurrency based on storage type
+    - _Requirements: 27.6_
+  - [x] 43.3 Implement sequential access optimization
+    - Read directory entries in filesystem order
+    - Leverage HDD read-ahead caching
+    - _Requirements: 27.2_
+
+- [x] 44. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 14: Multi-Root and Configuration
+
+- [x] 45. Implement multi-root library support
+  - [x] 45.1 Implement library root management
+    - Add/remove library roots
+    - Store root configuration
+    - Assign unique identifiers
+    - _Requirements: 12.1_
+  - [x] 45.2 Write property test for root creation
+    - **Property 64: Library root creation**
+    - **Validates: Requirements 12.1**
+  - [x] 45.3 Implement path decomposition
+    - Store root ID and relative path for each FileVersion
+    - Resolve absolute paths by combining root + relative
+    - _Requirements: 12.2, 12.6_
+  - [x] 45.4 Write property test for path storage
+    - **Property 65: Path storage decomposition**
+    - **Property 69: Path resolution correctness**
+    - **Validates: Requirements 12.2, 12.6**
+  - [x] 45.5 Implement root path updates
+    - Allow updating root paths
+    - Preserve FileVersion associations via root ID
+    - _Requirements: 12.3_
+  - [x] 45.6 Write property test for path update preservation
+    - **Property 66: Root path update preservation**
+    - **Validates: Requirements 12.3**
+  - [x] 45.7 Implement multi-root scanning
+    - Scan all configured roots during rescan
+    - Support archive/cold storage roots with lower priority
+    - _Requirements: 12.4, 12.5_
+  - [x] 45.8 Write property test for multi-root operations
+    - **Property 67: Multi-root scanning**
+    - **Property 68: Archive root priority marking**
+    - **Validates: Requirements 12.4, 12.5**
+
+- [x] 46. Implement configuration management
+  - [x] 46.1 Implement library configuration
+    - Store trash grace period
+    - Store hashing concurrency limits
+    - Store rescan batch size
+    - Store cleanup thresholds
+    - Store quality preference policies
+    - Store version retention policies
+    - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6_
+  - [x] 46.2 Implement configuration validation
+    - Validate setting values
+    - Apply constraints (positive numbers, valid ranges)
+    - _Requirements: 15.4_
+  - [x] 46.3 Implement configuration persistence
+    - Save configuration to database
+    - Load on startup
+    - Apply changes without restart
+    - _Requirements: 15.4, 15.5_
+
+- [x] 47. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 15: UI Integration
+
+- [x] 48. Implement Tauri commands for library management
+  - [x] 48.1 Create library browsing commands
+    - query_library command
+    - search_library command
+    - get_media_item command
+    - get_file_versions command
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 48.2 Create import commands
+    - stage_file command
+    - commit_staged_file command
+    - get_staged_files command
+    - _Requirements: 2.1, 2.4_
+  - [x] 48.3 Create maintenance commands
+    - schedule_rescan command
+    - get_cleanup_candidates command
+    - execute_cleanup command
+    - get_storage_analytics command
+    - _Requirements: 5.1, 8.1, 8.4, 10.1_
+  - [x] 48.4 Create collection commands
+    - create_collection command
+    - add_to_collection command
+    - get_collection_items command
+    - create_smart_collection command
+    - _Requirements: 19.1, 19.2, 19.3, 19.4_
+  - [x] 48.5 Create user metadata commands
+    - set_user_rating command
+    - add_tags command
+    - set_watch_status command
+    - set_custom_notes command
+    - _Requirements: 9.2, 9.3, 25.5_
+
+- [x] 49. Implement Svelte UI components
+  - [x] 49.1 Create LibraryBrowser component
+    - Display MediaItems in grid/list view
+    - Support filtering and sorting
+    - Show version counts and sizes
+    - Lazy load posters
+    - _Requirements: 4.1, 4.2, 4.5_
+  - [x] 49.2 Create MediaItemDetail component
+    - Display full metadata
+    - Show all FileVersions
+    - Allow editing user metadata
+    - Show playback history
+    - _Requirements: 1.4, 9.1, 25.3_
+  - [x] 49.3 Create VersionManager component
+    - Display version comparison
+    - Show quality scores
+    - Allow setting preferred version
+    - Show duplicate/variant information
+    - _Requirements: 6.3, 6.4, 6.6_
+  - [x] 49.4 Create CleanupManager component
+    - Display cleanup candidates
+    - Show space savings estimate
+    - Allow selection and confirmation
+    - Show cleanup progress and results
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+  - [x] 49.5 Create CollectionManager component
+    - Display collections
+    - Create and edit collections
+    - Manage smart collection criteria
+    - Add/remove items from collections
+    - _Requirements: 19.1, 19.2, 19.3, 19.4_
+  - [x] 49.6 Create StorageAnalytics component
+    - Display storage statistics
+    - Show breakdown by category
+    - Show duplicate space
+    - Show largest media items
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+  - [x] 49.7 Create JobsDashboard component
+    - Display running and completed jobs
+    - Show progress bars
+    - Allow job cancellation
+    - Display job results
+    - _Requirements: 11.1, 11.2, 11.4_
+
+- [x] 50. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 16: Linux Desktop Integration
+
+- [ ] 51. Implement desktop integration
+  - [ ] 51.1 Implement file associations
+    - Register MIME type handlers
+    - Add to desktop file associations
+    - _Requirements: 30.1, 30.2_
+  - [ ] 51.2 Implement drag-and-drop support
+    - Accept file drops in UI
+    - Trigger import on drop
+    - _Requirements: 30.4_
+  - [ ] 51.3 Implement system tray integration
+    - Display tray icon
+    - Show quick access menu
+    - Display job status in tray
+    - _Requirements: 30.5_
+  - [ ] 51.4 Implement power management integration
+    - Detect suspend/hibernate events
+    - Pause operations during suspend
+    - Resume operations after wake
+    - _Requirements: 30.6_
+
+- [ ] 52. Final Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 17: Documentation and Polish
+
+- [ ] 53. Create user documentation
+  - [ ] 53.1 Write user guide for library management features
+  - [ ] 53.2 Document import workflow
+  - [ ] 53.3 Document cleanup and maintenance
+  - [ ] 53.4 Document collections and smart collections
+  - [ ] 53.5 Document watch folders and automation
+
+- [ ] 54. Create developer documentation
+  - [ ] 54.1 Document component architecture
+  - [ ] 54.2 Document database schema
+  - [ ] 54.3 Document API interfaces
+  - [ ] 54.4 Document property-based tests
+
+- [ ] 55. Performance testing and optimization
+  - [ ] 55.1 Test with 10,000+ MediaItems
+  - [ ] 55.2 Profile and optimize slow queries
+  - [ ] 55.3 Optimize HDD I/O patterns
+  - [ ] 55.4 Test rescan performance on large directories
+
+- [ ] 56. Final integration testing
+  - [ ] 56.1 Test end-to-end workflows
+  - [ ] 56.2 Test error handling and recovery
+  - [ ] 56.3 Test concurrent operations
+  - [ ] 56.4 Test Linux-specific features
+
+- [ ] 57. Final review and cleanup
+  - [ ] 57.1 Code review and refactoring
+  - [ ] 57.2 Remove debug code
+  - [ ] 57.3 Finalize configuration defaults
+  - [ ] 57.4 Prepare for release

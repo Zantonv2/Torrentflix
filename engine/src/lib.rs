@@ -7,6 +7,8 @@ pub mod scoring;
 pub mod torrent;
 pub mod filesystem;
 pub mod library;
+pub mod import;
+pub mod maintenance;
 pub mod database;
 pub mod jobs;
 pub mod config;
@@ -14,6 +16,9 @@ pub mod settings;
 pub mod ui;
 pub mod engine;
 pub mod ratings;
+pub mod watch;
+pub mod audit;
+pub mod notifications;
 
 pub use models::*;
 pub use engine::{Engine, RatingUpdate};

@@ -9,6 +9,11 @@
   import LoadingSpinner from './components/LoadingSpinner.svelte';
   import DownloadsTab from './components/DownloadsTab.svelte';
   import SettingsTab from './components/SettingsTab.svelte';
+  import LibraryBrowser from './components/LibraryBrowser.svelte';
+  import MediaItemDetail from './components/MediaItemDetail.svelte';
+  import CollectionManager from './components/CollectionManager.svelte';
+  import StorageAnalytics from './components/StorageAnalytics.svelte';
+  import ManagementPanel from './components/ManagementPanel.svelte';
   import type { UiSearchResult } from './types';
 
   let searchResults: UiSearchResult[] = [];
@@ -19,6 +24,8 @@
   let selectedMovie: UiSearchResult | null = null;
   let currentTab = 'feed';
   let isFeedView = true;
+  let showMediaDetail = false;
+  let selectedMediaId: number | null = null;
 
   async function loadFeed(retryCount = 0) {
     console.log('🎬 loadFeed() called, attempt:', retryCount + 1);
@@ -94,6 +101,11 @@
     if (currentTab === 'feed' && !isFeedView) {
       loadFeed();
     }
+  }
+
+  function handleCloseMediaDetail() {
+    showMediaDetail = false;
+    selectedMediaId = null;
   }
 
   async function handleDownload(event: CustomEvent<UiSearchResult>) {
@@ -263,10 +275,28 @@
         <TabBar currentTab={currentTab} on:tabChange={handleTabChange} />
         
         <!-- Simple switch based on currentTab only -->
-        {#if currentTab === 'downloads'}
+        {#if currentTab === 'library'}
+          <div class="flex-1 overflow-hidden">
+            <LibraryBrowser />
+          </div>
+        {:else if currentTab === 'history'}
+          <div class="flex-1 overflow-hidden">
+            <StorageAnalytics />
+          </div>
+        {:else if currentTab === 'bookmarks'}
+          <div class="flex-1 overflow-hidden">
+            <CollectionManager />
+          </div>
+        {:else if currentTab === 'management'}
+          <div class="flex-1 overflow-hidden">
+            <ManagementPanel />
+          </div>
+        {:else if currentTab === 'downloads'}
           <DownloadsTab />
         {:else if currentTab === 'settings'}
-          <SettingsTab />
+          <div class="flex-1 overflow-hidden flex flex-col">
+            <SettingsTab />
+          </div>
         {:else if currentTab === 'feed'}
           {#if isLoading && searchResults.length === 0}
             <MovieGrid movies={[]} loading={true} on:movieSelect={handleMovieSelect} />
@@ -328,6 +358,14 @@
         />
       {/if}
     </div>
+
+    <!-- Media Item Detail Modal -->
+    {#if showMediaDetail && selectedMediaId}
+      <MediaItemDetail 
+        mediaId={selectedMediaId}
+        onClose={handleCloseMediaDetail}
+      />
+    {/if}
   {/if}
 </div>
 

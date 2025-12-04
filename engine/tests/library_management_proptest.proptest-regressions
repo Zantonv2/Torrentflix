@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc c6f33627aee5d38d1ed80cf3d76183c754f28974ef15a8c634700969a384ef4d # shrinks to num_subdirs = 1, files_per_dir = 1
+cc d21aed015d10f2b47022bcae1d87bf30c0c2bbf573cd19fd5564567d2808ef4a # shrinks to base_title = "A aaA  BAAa", typo_position = 1
+cc 90bb5213d34f4f4acab0232f81172acbfe76ad08fb61bb6293a82640b8dc54b1 # shrinks to titles = ["Aaa", "A-a", "Aa0", "AAA", "Aa "], years = [1990, 1990, 1990], media_types = [Movie, Movie, Movie], filter_year = 1990
+cc 83cd08500f23de4c8aa3d876dd9082c918566773ae55b78114322256f08b5515 # shrinks to titles = ["AA-", "A A", "Aa "], years = [2007, 1990, 1990], media_types = [Movie, Movie, Movie], filter_year = 2007
