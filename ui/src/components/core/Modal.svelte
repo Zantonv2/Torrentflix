@@ -19,17 +19,18 @@
 
   let modalElement = $state<HTMLDivElement | undefined>();
   let previousFocus: HTMLElement | null = null;
+  let isOpen = $state(open);
   const modalId = `modal-${Math.random().toString(36).substr(2, 9)}`;
   const titleId = `${modalId}-title`;
 
   const handleEscape = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && open) {
+    if (e.key === "Escape" && isOpen) {
       handleClose();
     }
   };
 
   const handleClose = () => {
-    open = false;
+    isOpen = false;
     onClose?.();
     if (previousFocus) {
       previousFocus.focus();
@@ -99,7 +100,7 @@
   });
 </script>
 
-{#if open}
+{#if isOpen}
   <div
     class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
     on:click={handleBackdropClick}
