@@ -22,22 +22,34 @@
   });
 
   async function loadFeed() {
+    console.log("🎬 Discover: loadFeed() called");
     isLoading = true;
     error = null;
 
     try {
-      const response = await invoke("get_feed");
-      const feedResults = (response as any).results || [];
+      console.log("🎬 Discover: Invoking get_feed command");
+      const response = await invoke<any>("get_feed");
+      console.log("🎬 Discover: get_feed response:", response);
+
+      // Response is UiSearchResponse with { results, total, took_ms }
+      const feedResults = response?.results || [];
+      console.log("🎬 Discover: feedResults count:", feedResults.length);
+
+      if (feedResults.length > 0) {
+        console.log("🎬 Discover: First result:", feedResults[0]);
+      }
+
       searchStore.setResults(feedResults);
+      console.log("🎬 Discover: Results set in store");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("❌ Discover: Feed error:", err);
       error = errorMsg;
       searchStore.setError(errorMsg);
       handleError(errorMsg, {
         command: "get_feed",
         userMessage: $t("discover.error"),
       });
-      console.error("Feed error:", err);
     } finally {
       isLoading = false;
     }
@@ -85,6 +97,7 @@
   }
 
   onMount(() => {
+    console.log("🎬 Discover: Component mounted, calling loadFeed()");
     loadFeed();
     return () => {
       unsubscribe();
