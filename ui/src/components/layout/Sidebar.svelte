@@ -2,7 +2,7 @@
   import { uiStore, setCurrentPage, type Page } from "../../stores/uiStore";
   import { t } from "svelte-i18n";
 
-  export const sidebarCollapsed = $state(false);
+  export let sidebarCollapsed = false;
 
   let currentPage: Page = "discover";
   let navButtons: HTMLButtonElement[] = [];
