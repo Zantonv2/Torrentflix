@@ -48,7 +48,7 @@
       searchStore.setError(errorMsg);
       handleError(errorMsg, {
         command: "get_feed",
-        userMessage: $t("discover.error"),
+        userMessage: "Failed to load feed",
       });
     } finally {
       isLoading = false;
@@ -69,7 +69,7 @@
     if (!movie.torrent_info?.magnet_link) {
       handleError("Magnet link not available", {
         command: "start_download",
-        userMessage: $t("discover.error"),
+        userMessage: "Magnet link not available",
       });
       return;
     }
@@ -79,14 +79,14 @@
         magnetLink: movie.torrent_info.magnet_link,
         title: movie.title,
       });
-      handleSuccess($t("common.success"));
+      handleSuccess("Download started");
       console.log("✅ Download started:", movie.title);
       selectedMovie = null;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       handleError(errorMsg, {
         command: "start_download",
-        userMessage: `Ошибка загрузки: ${errorMsg}`,
+        userMessage: `Download failed: ${errorMsg}`,
       });
       console.error("Download failed:", err);
     }
@@ -117,28 +117,22 @@
     {:else if error}
       <div class="flex-1 flex items-center justify-center overflow-y-auto">
         <div class="text-center py-12">
-          <div class="text-netflix-red text-lg mb-4">
-            {$t("discover.error")}
-          </div>
+          <div class="text-netflix-red text-lg mb-4">Error loading feed</div>
           <div class="text-netflix-light">{error}</div>
           <button
             class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
             on:click={loadFeed}
-            aria-label={$t("discover.retry")}
+            aria-label="Retry"
           >
-            {$t("discover.retry")}
+            Retry
           </button>
         </div>
       </div>
     {:else if results.length === 0}
       <div class="flex-1 flex items-center justify-center overflow-y-auto">
         <div class="text-center py-12">
-          <div class="text-netflix-light text-lg mb-4">
-            {$t("discover.empty_state")}
-          </div>
-          <div class="text-sm text-gray-500">
-            {$t("common.connection_error")}
-          </div>
+          <div class="text-netflix-light text-lg mb-4">No movies found</div>
+          <div class="text-sm text-gray-500">Connection error</div>
         </div>
       </div>
     {:else}
