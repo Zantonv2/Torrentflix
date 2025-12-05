@@ -8,6 +8,14 @@
   let navButtons: HTMLButtonElement[] = [];
   let currentFocusIndex = 0;
 
+  // Navigation items - must be declared before subscribe callback
+  const navItems: Array<{ id: Page; labelKey: string; icon: string }> = [
+    { id: "discover", labelKey: "nav.discover", icon: "🎬" },
+    { id: "library", labelKey: "nav.library", icon: "📚" },
+    { id: "downloads", labelKey: "nav.downloads", icon: "📥" },
+    { id: "settings", labelKey: "nav.settings", icon: "⚙️" },
+  ];
+
   // Subscribe to current page
   const unsubscribe = uiStore.subscribe((state) => {
     currentPage = state.currentPage;
@@ -17,14 +25,6 @@
       currentFocusIndex = index;
     }
   });
-
-  // Navigation items
-  const navItems: Array<{ id: Page; labelKey: string; icon: string }> = [
-    { id: "discover", labelKey: "nav.discover", icon: "🎬" },
-    { id: "library", labelKey: "nav.library", icon: "📚" },
-    { id: "downloads", labelKey: "nav.downloads", icon: "📥" },
-    { id: "settings", labelKey: "nav.settings", icon: "⚙️" },
-  ];
 
   function handleNavClick(page: Page) {
     setCurrentPage(page);
