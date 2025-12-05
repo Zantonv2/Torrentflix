@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { initializeI18n } from "./i18n/config";
   import MainLayout from "./components/layout/MainLayout.svelte";
   import { uiStore, type Page } from "./stores/uiStore";
   import Loading from "./components/core/Loading.svelte";
@@ -21,9 +20,6 @@
 
   onMount(async () => {
     console.log("🚀 App.svelte onMount() called");
-
-    // Initialize i18n
-    initializeI18n();
 
     // Failsafe: if loading takes more than 10 seconds, show error
     const failsafeTimeout = setTimeout(() => {
