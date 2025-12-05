@@ -1618,12 +1618,6 @@ impl MaintenanceManager {
         job_manager.enqueue(job).await
     }
 
-    /// Compute full hash for a FileVersion
-    pub async fn compute_full_hash(&self, version_id: FileVersionId) -> Result<Vec<u8>> {
-        // TODO: Implement full hash computation
-        Ok(Vec::new())
-    }
-
     // ========================================================================
     // Storage Analytics
     // ========================================================================
@@ -1963,13 +1957,14 @@ impl MaintenanceManager {
     async fn get_disk_space(&self, path: &Path) -> Result<(u64, u64)> {
         use std::os::unix::fs::MetadataExt;
         
-        let metadata = tokio::fs::metadata(path)
+        let _metadata = tokio::fs::metadata(path)
             .await
             .context("Failed to get filesystem metadata")?;
 
-        // On Unix systems, we can use statvfs to get disk space
-        // For now, return placeholder values
-        // TODO: Implement proper disk space detection using nix crate
+        // Note: Proper disk space detection requires the `nix` crate for statvfs support
+        // This is a known limitation - disk space monitoring is not yet fully implemented
+        // For now, return placeholder values (0, 0) to indicate unavailable
+        // This prevents disk usage threshold notifications from triggering
         Ok((0, 0))
     }
 

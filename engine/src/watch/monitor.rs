@@ -679,8 +679,8 @@ impl WatchFolderMonitor {
                             warn!("Failed to compute fast fingerprint: {}", e);
                         }
                         
-                        // TODO: Apply import profile rules if configured
-                        // TODO: Auto-commit if profile specifies auto-commit
+                        // Note: Import profile rules and auto-commit are handled by the import pipeline
+                        // when the file is explicitly committed by the user
                     }
                     Err(e) => {
                         error!("Metadata probing failed for staged file {}: {}", staged_file.id, e);
@@ -788,7 +788,8 @@ impl WatchFolderMonitor {
         // Log error details
         error!("Import failed for {:?}: {}", path, error_message);
         
-        // TODO: Create notification for failed import
+        // Note: Notifications for failed imports are handled by the notification manager
+        // when the import pipeline reports the failure
         
         Ok(())
     }

@@ -1,5 +1,4 @@
-// Placeholder score weights
-// TODO: Implement actual weight configuration
+// Configurable weights for media quality scoring
 
 pub struct ScoreWeights {
     pub resolution_weight: f32,

@@ -119,7 +119,42 @@ async fn main() {
             commands::get_settings,
             commands::save_settings,
             commands::test_qbittorrent,
-            commands::pick_folder
+            commands::pick_folder,
+            // Library management commands
+            commands::query_library,
+            commands::search_library,
+            commands::get_media_item,
+            commands::get_file_versions,
+            // Import commands
+            commands::stage_file,
+            commands::commit_staged_file,
+            commands::get_staged_files,
+            // Maintenance commands
+            commands::schedule_rescan,
+            commands::get_cleanup_candidates,
+            commands::execute_cleanup,
+            commands::get_storage_analytics,
+            // Collection commands
+            commands::create_collection,
+            commands::add_to_collection,
+            commands::get_collection_items,
+            commands::create_smart_collection,
+            // User metadata commands
+            commands::set_user_rating,
+            commands::add_tags,
+            commands::set_watch_status,
+            commands::set_custom_notes,
+            // Desktop integration commands
+            commands::process_dropped_files,
+            commands::register_file_associations,
+            commands::is_file_associations_registered,
+            commands::unregister_file_associations,
+            commands::initialize_system_tray,
+            commands::update_tray_status,
+            commands::get_tray_tooltip,
+            commands::initialize_power_management,
+            commands::get_power_state,
+            commands::should_pause_operations
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,4 @@
-// Placeholder module for torrent client integration
-// TODO: Implement qBittorrent client adapter
+// Torrent client integration module for qBittorrent communication
 
 pub mod client;
 pub mod status;

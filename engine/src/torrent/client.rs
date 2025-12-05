@@ -40,7 +40,7 @@ impl TorrentClient {
             client: Client::builder()
                 .cookie_store(true)
                 .build()
-                .expect("Failed to create HTTP client"),
+                .expect("Failed to create HTTP client for qBittorrent"),
             cookie: Arc::new(Mutex::new(None)),
         }
     }

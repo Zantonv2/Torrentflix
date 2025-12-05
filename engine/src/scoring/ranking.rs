@@ -1,5 +1,4 @@
-// Placeholder result ranker
-// TODO: Implement actual ranking logic
+// Result ranking and sorting by quality score
 
 use crate::models::MediaSearchResult;
 

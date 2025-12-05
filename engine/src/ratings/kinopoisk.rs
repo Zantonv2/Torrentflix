@@ -223,11 +223,7 @@ pub struct KinopoiskRatingResult {
     pub imdb_id: Option<String>,
 }
 
-impl Default for KinopoiskClient {
-    fn default() -> Self {
-        Self::new().expect("Failed to create KinopoiskClient: KINOPOISK_API_TOKEN not set")
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

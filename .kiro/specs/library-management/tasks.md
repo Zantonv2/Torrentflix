@@ -987,58 +987,58 @@
 
 ## Phase 16: Linux Desktop Integration
 
-- [ ] 51. Implement desktop integration
-  - [ ] 51.1 Implement file associations
+- [x] 51. Implement desktop integration
+  - [x] 51.1 Implement file associations
     - Register MIME type handlers
     - Add to desktop file associations
     - _Requirements: 30.1, 30.2_
-  - [ ] 51.2 Implement drag-and-drop support
+  - [x] 51.2 Implement drag-and-drop support
     - Accept file drops in UI
     - Trigger import on drop
     - _Requirements: 30.4_
-  - [ ] 51.3 Implement system tray integration
+  - [x] 51.3 Implement system tray integration
     - Display tray icon
     - Show quick access menu
     - Display job status in tray
     - _Requirements: 30.5_
-  - [ ] 51.4 Implement power management integration
+  - [x] 51.4 Implement power management integration
     - Detect suspend/hibernate events
     - Pause operations during suspend
     - Resume operations after wake
     - _Requirements: 30.6_
 
-- [ ] 52. Final Checkpoint - Ensure all tests pass
+- [x] 52. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 17: Documentation and Polish
 
-- [ ] 53. Create user documentation
-  - [ ] 53.1 Write user guide for library management features
-  - [ ] 53.2 Document import workflow
-  - [ ] 53.3 Document cleanup and maintenance
-  - [ ] 53.4 Document collections and smart collections
-  - [ ] 53.5 Document watch folders and automation
+- [x] 53. Create user documentation
+  - [x] 53.1 Write user guide for library management features
+  - [x] 53.2 Document import workflow
+  - [x] 53.3 Document cleanup and maintenance
+  - [x] 53.4 Document collections and smart collections
+  - [x] 53.5 Document watch folders and automation
 
-- [ ] 54. Create developer documentation
-  - [ ] 54.1 Document component architecture
-  - [ ] 54.2 Document database schema
-  - [ ] 54.3 Document API interfaces
-  - [ ] 54.4 Document property-based tests
+- [x] 54. Create developer documentation
+  - [x] 54.1 Document component architecture
+  - [x] 54.2 Document database schema
+  - [x] 54.3 Document API interfaces
+  - [x] 54.4 Document property-based tests
 
-- [ ] 55. Performance testing and optimization
-  - [ ] 55.1 Test with 10,000+ MediaItems
-  - [ ] 55.2 Profile and optimize slow queries
-  - [ ] 55.3 Optimize HDD I/O patterns
-  - [ ] 55.4 Test rescan performance on large directories
+- [x] 55. Performance testing and optimization
+  - [x] 55.1 Test with 10,000+ MediaItems
+  - [x] 55.2 Profile and optimize slow queries
+  - [x] 55.3 Optimize HDD I/O patterns
+  - [x] 55.4 Test rescan performance on large directories
 
-- [ ] 56. Final integration testing
-  - [ ] 56.1 Test end-to-end workflows
-  - [ ] 56.2 Test error handling and recovery
-  - [ ] 56.3 Test concurrent operations
-  - [ ] 56.4 Test Linux-specific features
+- [x] 56. Final integration testing
+  - [x] 56.1 Test end-to-end workflows
+  - [x] 56.2 Test error handling and recovery
+  - [x] 56.3 Test concurrent operations
+  - [x] 56.4 Test Linux-specific features
 
-- [ ] 57. Final review and cleanup
-  - [ ] 57.1 Code review and refactoring
-  - [ ] 57.2 Remove debug code
-  - [ ] 57.3 Finalize configuration defaults
-  - [ ] 57.4 Prepare for release
+- [x] 57. Final review and cleanup
+  - [x] 57.1 Code review and refactoring
+  - [x] 57.2 Remove debug code
+  - [x] 57.3 Finalize configuration defaults
+  - [x] 57.4 Prepare for release

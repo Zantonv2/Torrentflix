@@ -1,5 +1,4 @@
-// Placeholder torrent controller
-// TODO: Implement actual torrent control logic
+// Torrent control operations for managing downloads
 
 use anyhow::Result;
 use crate::models::TorrentResult;

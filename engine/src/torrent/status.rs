@@ -1,5 +1,4 @@
-// Placeholder download tracker
-// TODO: Implement actual download status tracking
+// Download status tracking for active torrents
 
 use crate::models::DownloadStatus;
 use std::collections::HashMap;

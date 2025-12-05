@@ -98,8 +98,7 @@ impl RatingManager {
     pub fn set_rating_update_channel(&self, tx: mpsc::UnboundedSender<RatingUpdate>) {
         if let Ok(mut guard) = self.rating_update_tx.lock() {
             *guard = Some(tx);
-            eprintln!("🔵 Rating Manager: ✅ Rating update channel set (via Mutex)");
-            info!("Rating Manager: ✅ Rating update channel set");
+            info!("Rating Manager: Rating update channel set");
         } else {
             warn!("Rating Manager: Failed to lock Mutex to set rating update channel");
         }
@@ -115,12 +114,9 @@ impl RatingManager {
                 rating_tmdb,
             };
             if let Err(e) = tx.send(update) {
-                eprintln!("🔵 Rating Manager: ❌ Failed to send rating update to UI for {}: {}", movie_id, e);
-                warn!("Rating Manager: ❌ Failed to send rating update to UI for {}: {}", movie_id, e);
+                warn!("Rating Manager: Failed to send rating update to UI for {}: {}", movie_id, e);
             } else {
-                eprintln!("🔵 Rating Manager: ✅ Sent rating update to UI for {} - Kinopoisk: {:?}, IMDb: {:?}, TMDB: {:?}", 
-                      movie_id, rating_kinopoisk, rating_imdb, rating_tmdb);
-                info!("Rating Manager: ✅ Sent rating update to UI for {} - Kinopoisk: {:?}, IMDb: {:?}, TMDB: {:?}", 
+                debug!("Rating Manager: Sent rating update to UI for {} - Kinopoisk: {:?}, IMDb: {:?}, TMDB: {:?}", 
                       movie_id, rating_kinopoisk, rating_imdb, rating_tmdb);
             }
         } else {

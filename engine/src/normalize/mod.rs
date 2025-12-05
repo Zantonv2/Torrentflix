@@ -314,7 +314,11 @@ pub mod utils {
         // Clean up extra spaces, dots, and hyphens
         title = title.replace('.', " ");
         title = title.replace('_', " ");
-        title = regex::Regex::new(r"\s+").unwrap().replace_all(&title, " ").to_string();
+        // Safe to unwrap: regex pattern is hardcoded and valid
+        title = regex::Regex::new(r"\s+")
+            .expect("Invalid regex pattern for whitespace normalization")
+            .replace_all(&title, " ")
+            .to_string();
         title.trim().to_string()
     }
 }
@@ -335,11 +339,13 @@ pub fn normalize_for_rating(raw_title: &str) -> RatingTitleInfo {
         use once_cell::sync::Lazy;
         
         static RE_SERIES_MARKER: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?i)\bсериал\b").unwrap()
+            // Safe to unwrap: regex pattern is hardcoded and valid
+            Regex::new(r"(?i)\bсериал\b").expect("Invalid regex pattern for series marker")
         });
         
         static RE_YEAR: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\b(19|20)\d{2}\b").unwrap()
+            // Safe to unwrap: regex pattern is hardcoded and valid
+            Regex::new(r"\b(19|20)\d{2}\b").expect("Invalid regex pattern for year")
         });
         
         static RE_RUSSIAN_SEASON: Lazy<Regex> = Lazy::new(|| {

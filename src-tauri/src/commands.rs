@@ -7,10 +7,8 @@ use engine::ui::dto::{UiSearchRequest, UiSearchResponse, UiSearchResult};
 use engine::settings::models::Settings;
 use engine::library::models::{
     MediaItem, FileVersion, LibraryFilters, SearchOptions, 
-    CollectionId, MediaItemId, FileVersionId, FilterCriteria, WatchStatus, Tag
+    CollectionId, MediaItemId, FilterCriteria, WatchStatus
 };
-use engine::library::manager::LibraryManager;
-use std::sync::Arc;
 
 /// Search for movies/series with Netflix-style results
 #[tauri::command]
@@ -30,10 +28,7 @@ pub async fn search_movies(
     };
     
     // Perform search through engine
-    info!("═══════════════════════════════════════════════════════════");
-    info!("🔍 Tauri: search_movies command called from UI");
-    info!("🔍 Tauri: Query: '{}', Type: {:?}", request.query, media_type);
-    info!("🔍 Tauri: Calling engine.search_by_type()...");
+    debug!("Tauri: search_movies command - Query: '{}', Type: {:?}", request.query, media_type);
     
     match engine.search_by_type(&request.query, media_type).await {
         Ok(results) => {
@@ -46,7 +41,7 @@ pub async fn search_movies(
                 .take(request.limit.unwrap_or(50) as usize)
                 .collect();
             
-            info!("Search completed: {} results in {}ms", ui_results.len(), took_ms);
+            debug!("Search completed: {} results in {}ms", ui_results.len(), took_ms);
             
             let total_results = ui_results.len() as u32;
             
@@ -66,7 +61,7 @@ pub async fn search_movies(
 /// Test command to verify IPC bridge works
 #[tauri::command]
 pub async fn test_connection() -> Result<String, String> {
-    info!("🧪 Tauri: test_connection called");
+    debug!("Tauri: test_connection called");
     Ok("IPC bridge working!".to_string())
 }
 
@@ -75,25 +70,17 @@ pub async fn test_connection() -> Result<String, String> {
 pub async fn get_feed(
     engine: State<'_, Engine>,
 ) -> Result<UiSearchResponse, String> {
-    info!("═══════════════════════════════════════════════════════════");
-    info!("🎬 Tauri: get_feed command called from UI");
-    info!("🎬 Tauri: Calling engine.get_feed()...");
+    debug!("Tauri: get_feed command called");
     
     match engine.get_feed().await {
         Ok(results) => {
-            info!("🎉 Tauri: Engine returned {} results", results.len());
+            debug!("Tauri: Engine returned {} results", results.len());
             
             // Convert to UI DTOs
             let ui_results: Vec<UiSearchResult> = results
                 .into_iter()
                 .filter_map(UiSearchResult::from_media_search_result)
                 .collect();
-            
-            info!("🔄 Tauri: Converted {} results to UI format", ui_results.len());
-            
-            for (i, result) in ui_results.iter().take(3).enumerate() {
-                debug!("📽️ Tauri UI Result {}: '{}' - {}", i, result.title, result.quality_badge);
-            }
             
             let total_count = ui_results.len() as u32;
             let response = UiSearchResponse {
@@ -102,11 +89,11 @@ pub async fn get_feed(
                 took_ms: 0, // Would need to track timing
             };
             
-            info!("✅ Tauri: Returning response with {} movies to UI", response.results.len());
+            debug!("Tauri: Returning response with {} movies to UI", response.results.len());
             Ok(response)
         }
         Err(e) => {
-            error!("❌ Tauri: Feed error: {}", e);
+            error!("Tauri: Feed error: {}", e);
             Err(format!("Failed to fetch feed: {}", e))
         }
     }
@@ -148,15 +135,15 @@ pub async fn get_engine_status(
 pub async fn clear_imdb_cache(
     engine: State<'_, Engine>,
 ) -> Result<usize, String> {
-    info!("🧹 Tauri: clear_imdb_cache command called");
+    debug!("Tauri: clear_imdb_cache command called");
     
     match engine.clear_imdb_cache().await {
         Ok(count) => {
-            info!("✅ Cleared {} IMDb ratings from cache", count);
+            debug!("Cleared {} IMDb ratings from cache", count);
             Ok(count)
         }
         Err(e) => {
-            error!("❌ Failed to clear IMDb cache: {}", e);
+            error!("Failed to clear IMDb cache: {}", e);
             Err(format!("Failed to clear IMDb cache: {}", e))
         }
     }
@@ -167,15 +154,15 @@ pub async fn clear_imdb_cache(
 pub async fn clear_all_ratings_cache(
     engine: State<'_, Engine>,
 ) -> Result<usize, String> {
-    info!("🧹 Tauri: clear_all_ratings_cache command called");
+    debug!("Tauri: clear_all_ratings_cache command called");
     
     match engine.clear_all_ratings_cache().await {
         Ok(count) => {
-            info!("✅ Cleared {} ratings from cache", count);
+            debug!("Cleared {} ratings from cache", count);
             Ok(count)
         }
         Err(e) => {
-            error!("❌ Failed to clear ratings cache: {}", e);
+            error!("Failed to clear ratings cache: {}", e);
             Err(format!("Failed to clear ratings cache: {}", e))
         }
     }
@@ -188,15 +175,15 @@ pub async fn start_download(
     title: String,
     engine: State<'_, Engine>,
 ) -> Result<String, String> {
-    info!("📥 Tauri: start_download called for: {}", title);
+    debug!("Tauri: start_download called for: {}", title);
     
     match engine.start_download(&magnet_link, &title).await {
         Ok(hash) => {
-            info!("✅ Download started: {}", hash);
+            debug!("Download started: {}", hash);
             Ok(hash)
         }
         Err(e) => {
-            error!("❌ Failed to start download: {}", e);
+            error!("Failed to start download: {}", e);
             Err(format!("Failed to start download: {}", e))
         }
     }
@@ -207,12 +194,12 @@ pub async fn start_download(
 pub async fn get_active_downloads(
     engine: State<'_, Engine>,
 ) -> Result<Vec<engine::models::DownloadStatus>, String> {
-    debug!("📊 Tauri: get_active_downloads called");
+    debug!("Tauri: get_active_downloads called");
     
     match engine.get_active_downloads().await {
         Ok(downloads) => Ok(downloads),
         Err(e) => {
-            error!("❌ Failed to get downloads: {}", e);
+            error!("Failed to get downloads: {}", e);
             Err(format!("Failed to get downloads: {}", e))
         }
     }
@@ -224,15 +211,15 @@ pub async fn pause_download(
     hash: String,
     engine: State<'_, Engine>,
 ) -> Result<(), String> {
-    info!("⏸️ Tauri: pause_download called for: {}", hash);
+    debug!("Tauri: pause_download called for: {}", hash);
     
     match engine.pause_download(&hash).await {
         Ok(_) => {
-            info!("✅ Download paused: {}", hash);
+            debug!("Download paused: {}", hash);
             Ok(())
         }
         Err(e) => {
-            error!("❌ Failed to pause download: {}", e);
+            error!("Failed to pause download: {}", e);
             Err(format!("Failed to pause download: {}", e))
         }
     }
@@ -244,15 +231,15 @@ pub async fn resume_download(
     hash: String,
     engine: State<'_, Engine>,
 ) -> Result<(), String> {
-    info!("▶️ Tauri: resume_download called for: {}", hash);
+    debug!("Tauri: resume_download called for: {}", hash);
     
     match engine.resume_download(&hash).await {
         Ok(_) => {
-            info!("✅ Download resumed: {}", hash);
+            debug!("Download resumed: {}", hash);
             Ok(())
         }
         Err(e) => {
-            error!("❌ Failed to resume download: {}", e);
+            error!("Failed to resume download: {}", e);
             Err(format!("Failed to resume download: {}", e))
         }
     }
@@ -844,4 +831,218 @@ pub async fn set_custom_notes(
             Err(format!("Failed to set custom notes: {}", e))
         }
     }
+}
+
+// ============================================================================
+// Desktop Integration Commands (Task 51)
+// ============================================================================
+
+/// Process dropped files for import
+/// Requirements: 30.4
+#[tauri::command]
+pub async fn process_dropped_files(
+    files: Vec<String>,
+    _engine: State<'_, Engine>,
+) -> Result<Vec<String>, String> {
+    info!("📥 Tauri: process_dropped_files command called with {} files", files.len());
+    
+    let file_paths: Vec<std::path::PathBuf> = files
+        .into_iter()
+        .map(std::path::PathBuf::from)
+        .collect();
+    
+    match engine::desktop::DragDropHandler::process_dropped_files(file_paths).await {
+        Ok(valid_files) => {
+            let file_strings: Vec<String> = valid_files
+                .into_iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect();
+            info!("✅ Processed {} valid files from drag-and-drop", file_strings.len());
+            Ok(file_strings)
+        }
+        Err(e) => {
+            error!("❌ Failed to process dropped files: {}", e);
+            Err(format!("Failed to process dropped files: {}", e))
+        }
+    }
+}
+
+/// Register the application with the desktop environment
+/// Requirements: 30.1, 30.2
+#[tauri::command]
+pub async fn register_file_associations(
+    app_name: String,
+    app_exec: String,
+    app_icon: Option<String>,
+) -> Result<(), String> {
+    info!("📋 Tauri: register_file_associations command called");
+    
+    let manager = engine::desktop::FileAssociationManager::new(
+        app_name,
+        std::path::PathBuf::from(app_exec),
+        app_icon.map(std::path::PathBuf::from),
+    );
+    
+    match manager.register_with_desktop().await {
+        Ok(_) => {
+            info!("✅ File associations registered successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to register file associations: {}", e);
+            Err(format!("Failed to register file associations: {}", e))
+        }
+    }
+}
+
+/// Check if the application is registered with the desktop environment
+/// Requirements: 30.1, 30.2
+#[tauri::command]
+pub async fn is_file_associations_registered(
+    app_name: String,
+) -> Result<bool, String> {
+    debug!("🔍 Tauri: is_file_associations_registered command called");
+    
+    let manager = engine::desktop::FileAssociationManager::new(
+        app_name,
+        std::path::PathBuf::from("/usr/bin/moviedownloader"),
+        None,
+    );
+    
+    Ok(manager.is_registered().await)
+}
+
+/// Unregister the application from the desktop environment
+/// Requirements: 30.1, 30.2
+#[tauri::command]
+pub async fn unregister_file_associations(
+    app_name: String,
+) -> Result<(), String> {
+    info!("🗑️ Tauri: unregister_file_associations command called");
+    
+    let manager = engine::desktop::FileAssociationManager::new(
+        app_name,
+        std::path::PathBuf::from("/usr/bin/moviedownloader"),
+        None,
+    );
+    
+    match manager.unregister_from_desktop().await {
+        Ok(_) => {
+            info!("✅ File associations unregistered successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to unregister file associations: {}", e);
+            Err(format!("Failed to unregister file associations: {}", e))
+        }
+    }
+}
+
+/// Initialize system tray
+/// Requirements: 30.5
+#[tauri::command]
+pub async fn initialize_system_tray(
+    icon_path: Option<String>,
+) -> Result<(), String> {
+    info!("🎯 Tauri: initialize_system_tray command called");
+    
+    let manager = engine::desktop::SystemTrayManager::new(icon_path);
+    
+    match manager.initialize().await {
+        Ok(_) => {
+            info!("✅ System tray initialized successfully");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to initialize system tray: {}", e);
+            Err(format!("Failed to initialize system tray: {}", e))
+        }
+    }
+}
+
+/// Update system tray status
+/// Requirements: 30.5
+#[tauri::command]
+pub async fn update_tray_status(
+    is_running: bool,
+    active_jobs: usize,
+    status_message: String,
+) -> Result<(), String> {
+    debug!("🎯 Tauri: update_tray_status command called");
+    
+    let manager = engine::desktop::SystemTrayManager::new(None);
+    let status = engine::desktop::system_tray::TrayStatus {
+        is_running,
+        active_jobs,
+        status_message,
+    };
+    
+    match manager.update_status(status).await {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("❌ Failed to update tray status: {}", e);
+            Err(format!("Failed to update tray status: {}", e))
+        }
+    }
+}
+
+/// Get system tray tooltip
+/// Requirements: 30.5
+#[tauri::command]
+pub async fn get_tray_tooltip() -> Result<String, String> {
+    debug!("🎯 Tauri: get_tray_tooltip command called");
+    
+    let manager = engine::desktop::SystemTrayManager::new(None);
+    Ok(manager.get_tooltip().await)
+}
+
+/// Initialize power management monitoring
+/// Requirements: 30.6
+#[tauri::command]
+pub async fn initialize_power_management() -> Result<(), String> {
+    info!("⚡ Tauri: initialize_power_management command called");
+    
+    let handler = engine::desktop::PowerManagementHandler::new();
+    
+    match handler.initialize().await {
+        Ok(_) => {
+            info!("✅ Power management monitoring initialized");
+            Ok(())
+        }
+        Err(e) => {
+            error!("❌ Failed to initialize power management: {}", e);
+            Err(format!("Failed to initialize power management: {}", e))
+        }
+    }
+}
+
+/// Get current power state
+/// Requirements: 30.6
+#[tauri::command]
+pub async fn get_power_state() -> Result<String, String> {
+    debug!("⚡ Tauri: get_power_state command called");
+    
+    let handler = engine::desktop::PowerManagementHandler::new();
+    let state = handler.get_power_state().await;
+    
+    let state_str = match state {
+        engine::desktop::power_management::PowerState::Running => "running",
+        engine::desktop::power_management::PowerState::SuspendPending => "suspend_pending",
+        engine::desktop::power_management::PowerState::Suspended => "suspended",
+        engine::desktop::power_management::PowerState::Resuming => "resuming",
+        engine::desktop::power_management::PowerState::HibernationPending => "hibernation_pending",
+        engine::desktop::power_management::PowerState::Hibernating => "hibernating",
+    };
+    
+    Ok(state_str.to_string())
+}
+
+/// Check if operations should be paused due to power state
+/// Requirements: 30.6
+#[tauri::command]
+pub async fn should_pause_operations() -> Result<bool, String> {
+    debug!("⚡ Tauri: should_pause_operations command called");
+    
+    let handler = engine::desktop::PowerManagementHandler::new();
+    Ok(handler.should_pause_operations().await)
 }

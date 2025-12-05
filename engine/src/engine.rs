@@ -110,11 +110,9 @@ impl Engine {
         // Also set it on RatingManager if it exists (now uses interior mutability, so no need for mutable reference)
         if let Some(ref rating_manager) = self.rating_manager {
             rating_manager.set_rating_update_channel(tx.clone());
-            eprintln!("🔵 Engine: ✅ Set rating update channel on existing RatingManager (via interior mutability)");
-            info!("Engine: ✅ Set rating update channel on existing RatingManager");
+            info!("Engine: Set rating update channel on existing RatingManager");
         } else {
-            eprintln!("🔵 Engine: RatingManager not created yet, channel will be set when RatingManager is initialized");
-            info!("Engine: RatingManager not created yet, channel will be set when RatingManager is initialized");
+            debug!("Engine: RatingManager not created yet, channel will be set when RatingManager is initialized");
         }
     }
 
@@ -252,10 +250,9 @@ impl Engine {
                 // Set channel if it was already set (now uses interior mutability, so no mutable reference needed)
                 if let Some(ref tx) = self.rating_update_tx {
                     rating_manager_arc.set_rating_update_channel(tx.clone());
-                    eprintln!("🔵 Engine: ✅ Set rating update channel on RatingManager during initialization");
-                    info!("Engine: ✅ Set rating update channel on RatingManager during initialization");
+                    info!("Engine: Set rating update channel on RatingManager during initialization");
                 } else {
-                    eprintln!("🔵 Engine: Rating update channel not set yet on Engine (will be set later)");
+                    debug!("Engine: Rating update channel not set yet on Engine (will be set later)");
                 }
                 
                 // Now store the clone (after setting channel)

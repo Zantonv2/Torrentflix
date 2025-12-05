@@ -19,6 +19,7 @@ pub mod ratings;
 pub mod watch;
 pub mod audit;
 pub mod notifications;
+pub mod desktop;
 
 pub use models::*;
 pub use engine::{Engine, RatingUpdate};
