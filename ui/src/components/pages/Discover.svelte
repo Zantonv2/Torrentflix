@@ -27,6 +27,18 @@
     error = null;
 
     try {
+      // Wait for Tauri to be ready (check if __TAURI_INTERNALS__ exists)
+      let retries = 0;
+      while (!window.__TAURI_INTERNALS__ && retries < 50) {
+        console.log("⏳ Discover: Waiting for Tauri to initialize...", retries);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        retries++;
+      }
+
+      if (!window.__TAURI_INTERNALS__) {
+        throw new Error("Tauri failed to initialize");
+      }
+
       console.log("🎬 Discover: Invoking get_feed command");
       const response = await invoke<any>("get_feed");
       console.log("🎬 Discover: get_feed response:", response);
