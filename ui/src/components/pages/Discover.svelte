@@ -1,0 +1,160 @@
+<script lang="ts">
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
+  import { t } from "svelte-i18n";
+  import { searchStore } from "../../stores/searchStore";
+  import { handleError, handleSuccess } from "../../utils/errorHandler";
+  import MovieGrid from "../MovieGrid.svelte";
+  import DetailPanel from "../DetailPanel.svelte";
+  import type { UiSearchResult } from "../../types";
+
+  let selectedMovie: UiSearchResult | null = null;
+  let isLoading = false;
+  let error: string | null = null;
+
+  // Subscribe to search store
+  let results: UiSearchResult[] = [];
+  let storeLoading = false;
+
+  const unsubscribe = searchStore.subscribe((state) => {
+    results = state.results;
+    storeLoading = state.loading;
+  });
+
+  async function loadFeed() {
+    isLoading = true;
+    error = null;
+
+    try {
+      const response = await invoke("get_feed");
+      const feedResults = (response as any).results || [];
+      searchStore.setResults(feedResults);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      error = errorMsg;
+      searchStore.setError(errorMsg);
+      handleError(errorMsg, {
+        command: "get_feed",
+        userMessage: $t("discover.error"),
+      });
+      console.error("Feed error:", err);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function handleMovieSelect(event: CustomEvent<UiSearchResult>) {
+    selectedMovie = event.detail;
+  }
+
+  function handleCloseDetail() {
+    selectedMovie = null;
+  }
+
+  async function handleDownload(event: CustomEvent<UiSearchResult>) {
+    const movie = event.detail;
+
+    if (!movie.torrent_info?.magnet_link) {
+      handleError("Magnet link not available", {
+        command: "start_download",
+        userMessage: $t("discover.error"),
+      });
+      return;
+    }
+
+    try {
+      await invoke("start_download", {
+        magnetLink: movie.torrent_info.magnet_link,
+        title: movie.title,
+      });
+      handleSuccess($t("common.success"));
+      console.log("✅ Download started:", movie.title);
+      selectedMovie = null;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      handleError(errorMsg, {
+        command: "start_download",
+        userMessage: `Ошибка загрузки: ${errorMsg}`,
+      });
+      console.error("Download failed:", err);
+    }
+  }
+
+  function handleBookmark(event: CustomEvent<UiSearchResult>) {
+    console.log("Bookmark:", event.detail.title);
+  }
+
+  onMount(() => {
+    loadFeed();
+    return () => {
+      unsubscribe();
+    };
+  });
+</script>
+
+<div class="flex flex-1 overflow-hidden" style="min-height: 0; height: 100%;">
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    {#if isLoading && results.length === 0}
+      <MovieGrid
+        movies={[]}
+        loading={true}
+        on:movieSelect={handleMovieSelect}
+      />
+    {:else if error}
+      <div class="flex-1 flex items-center justify-center overflow-y-auto">
+        <div class="text-center py-12">
+          <div class="text-netflix-red text-lg mb-4">
+            {$t("discover.error")}
+          </div>
+          <div class="text-netflix-light">{error}</div>
+          <button
+            class="mt-4 px-4 py-2 bg-netflix-red text-white rounded hover:bg-red-600 transition-colors"
+            on:click={loadFeed}
+            aria-label={$t("discover.retry")}
+          >
+            {$t("discover.retry")}
+          </button>
+        </div>
+      </div>
+    {:else if results.length === 0}
+      <div class="flex-1 flex items-center justify-center overflow-y-auto">
+        <div class="text-center py-12">
+          <div class="text-netflix-light text-lg mb-4">
+            {$t("discover.empty_state")}
+          </div>
+          <div class="text-sm text-gray-500">
+            {$t("common.connection_error")}
+          </div>
+        </div>
+      </div>
+    {:else}
+      <MovieGrid
+        movies={results}
+        loading={storeLoading}
+        on:movieSelect={handleMovieSelect}
+      />
+    {/if}
+  </div>
+
+  <!-- Detail panel (slides in) -->
+  {#if selectedMovie}
+    <DetailPanel
+      movie={selectedMovie}
+      isOpen={true}
+      on:close={handleCloseDetail}
+      on:download={handleDownload}
+      on:bookmark={handleBookmark}
+    />
+  {/if}
+</div>
+
+<style>
+  :global(.netflix-red) {
+    color: #e50914;
+  }
+
+  :global(.netflix-light) {
+    color: #ffffff;
+  }
+</style>
