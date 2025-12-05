@@ -23,6 +23,11 @@
   const modalId = `modal-${Math.random().toString(36).substr(2, 9)}`;
   const titleId = `${modalId}-title`;
 
+  // Sync isOpen with open prop
+  $effect(() => {
+    isOpen = open;
+  });
+
   const handleEscape = (e: KeyboardEvent) => {
     if (e.key === "Escape" && isOpen) {
       handleClose();
