@@ -1,8 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
-  import { t } from "svelte-i18n";
-  import { i18nReady } from "../../i18n/config";
 
   const dispatch = createEventDispatcher();
 
@@ -74,17 +72,17 @@
     <div class="flex gap-2">
       <input
         type="text"
-        placeholder={$i18nReady ? $t("header.search_placeholder") : "Search..."}
+        placeholder="Search..."
         bind:value={searchValue}
         on:input={handleSearchInput}
         on:keypress={handleKeyPress}
         class="flex-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/40 focus:outline-none focus:border-netflix-red/50 focus:bg-white/10 focus:ring-2 focus:ring-netflix-red/30 transition-all duration-300"
-        aria-label={$i18nReady ? $t("header.search_placeholder") : "Search"}
+        aria-label="Search"
       />
       <button
         on:click={handleSearchButtonClick}
         class="px-6 py-2.5 bg-netflix-red hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-netflix-red/50"
-        aria-label={$i18nReady ? $t("header.search_button") : "Search"}
+        aria-label="Search"
       >
         🔍
       </button>

@@ -1,7 +1,5 @@
 <script lang="ts">
   import { uiStore, setCurrentPage, type Page } from "../../stores/uiStore";
-  import { t } from "svelte-i18n";
-  import { i18nReady } from "../../i18n/config";
 
   export let sidebarCollapsed = false;
 
@@ -74,12 +72,10 @@
           ? 'bg-netflix-red text-white font-medium'
           : 'text-white/70 hover:text-white hover:bg-white/10'}"
         aria-current={currentPage === item.id ? "page" : undefined}
-        aria-label={$i18nReady ? $t(item.labelKey) : item.id}
+        aria-label={item.id}
       >
         <span class="text-xl">{item.icon}</span>
-        <span class="text-sm font-medium"
-          >{$i18nReady ? $t(item.labelKey) : item.id}</span
-        >
+        <span class="text-sm font-medium">{item.id}</span>
       </button>
     {/each}
   </nav>
