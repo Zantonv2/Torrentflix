@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::{debug, warn};
 
-use crate::models::{TorrentResult, ParsedMedia, MediaType};
+use crate::models::{MediaType, ParsedMedia, TorrentResult};
 
 /// Information extracted from title for rating API requests
 #[derive(Debug, Clone)]
@@ -18,11 +18,15 @@ pub struct RatingTitleInfo {
     pub season: Option<u32>,
 }
 
-pub mod patterns;
 pub mod guessit;
+pub mod patterns;
+pub mod title_normalizer;
+pub mod title_normalizer_core;
+pub mod title_normalizer_wrapper;
 
-pub use patterns::PatternNormalizer;
 pub use guessit::GuessitNormalizer;
+pub use patterns::PatternNormalizer;
+pub use title_normalizer_wrapper::TitleNormalizerWrapper;
 
 /// Trait for media filename normalization
 pub trait MediaNormalizer: Send + Sync {
@@ -51,36 +55,52 @@ impl Normalizer {
         for strategy in &self.strategies {
             match strategy.normalize(torrent_result) {
                 Ok(parsed) => {
-                    debug!("Successfully normalized '{}' using {}", torrent_result.title, strategy.name());
+                    debug!(
+                        "Successfully normalized '{}' using {}",
+                        torrent_result.title,
+                        strategy.name()
+                    );
                     return Ok(parsed);
                 }
                 Err(e) => {
-                    debug!("Failed to normalize '{}' with {}: {}", torrent_result.title, strategy.name(), e);
+                    debug!(
+                        "Failed to normalize '{}' with {}: {}",
+                        torrent_result.title,
+                        strategy.name(),
+                        e
+                    );
                     continue;
                 }
             }
         }
 
         // Fallback to basic parsing
-        warn!("All normalization strategies failed for '{}', using basic parsing", torrent_result.title);
+        warn!(
+            "All normalization strategies failed for '{}', using basic parsing",
+            torrent_result.title
+        );
         self.basic_fallback(torrent_result)
     }
 
     fn basic_fallback(&self, torrent_result: &TorrentResult) -> Result<ParsedMedia> {
         let title = torrent_result.title.clone();
         let media_type = self.guess_media_type(&title);
-        
+
         Ok(ParsedMedia::new(title, media_type))
     }
 
     fn guess_media_type(&self, title: &str) -> MediaType {
         let title_lower = title.to_lowercase();
-        
-        if title_lower.contains("s0") && (title_lower.contains("e0") || title_lower.contains("ex")) {
+
+        if title_lower.contains("s0") && (title_lower.contains("e0") || title_lower.contains("ex"))
+        {
             MediaType::Series
-        } else if title_lower.contains("season") || title_lower.contains("episode") ||
-                  title_lower.contains("сериал") || title_lower.contains("сезон") ||
-                  title_lower.contains("серия") {
+        } else if title_lower.contains("season")
+            || title_lower.contains("episode")
+            || title_lower.contains("сериал")
+            || title_lower.contains("сезон")
+            || title_lower.contains("серия")
+        {
             MediaType::Series
         } else if title_lower.contains("documentary") || title_lower.contains("doc") {
             MediaType::Documentary
@@ -95,16 +115,13 @@ impl Normalizer {
 impl Default for Normalizer {
     fn default() -> Self {
         let mut normalizer = Self::new();
-        
-        // Add pattern-based normalizer as primary strategy
+
+        // Add advanced title normalizer core as primary strategy
+        normalizer = normalizer.add_strategy(Box::new(TitleNormalizerWrapper::new()));
+
+        // Add pattern-based normalizer as fallback
         normalizer = normalizer.add_strategy(Box::new(PatternNormalizer::new()));
-        
-        // TODO: Add guessit normalizer when available
-        // #[cfg(feature = "guessit")]
-        // {
-        //     normalizer = normalizer.add_strategy(Box::new(GuessitNormalizer::new()));
-        // }
-        
+
         normalizer
     }
 }
@@ -131,7 +148,7 @@ impl Default for NormalizerConfig {
 pub mod utils {
     pub fn extract_year(title: &str) -> Option<u32> {
         let re = regex::Regex::new(r"\b(19|20)\d{2}\b").ok()?;
-        
+
         if let Some(caps) = re.captures(title) {
             caps.get(0)?.as_str().parse().ok()
         } else {
@@ -141,8 +158,7 @@ pub mod utils {
 
     pub fn extract_resolution(title: &str) -> Option<String> {
         let resolutions = vec![
-            "4320p", "8k", "2160p", "4k", "1440p", "2k", 
-            "1080p", "720p", "480p", "360p", "240p"
+            "4320p", "8k", "2160p", "4k", "1440p", "2k", "1080p", "720p", "480p", "360p", "240p",
         ];
 
         for res in resolutions {
@@ -156,13 +172,28 @@ pub mod utils {
 
     pub fn extract_source(title: &str) -> Option<String> {
         let sources = vec![
-            "uhd bluray", "uhd", "bluray", "bd", "bdrip", "brrip",
-            "web-dl", "webdl", "webrip", "web", "hdtv", "pdtv", 
-            "dsr", "dvd", "dvdrip", "cam", "ts", "tc"
+            "uhd bluray",
+            "uhd",
+            "bluray",
+            "bd",
+            "bdrip",
+            "brrip",
+            "web-dl",
+            "webdl",
+            "webrip",
+            "web",
+            "hdtv",
+            "pdtv",
+            "dsr",
+            "dvd",
+            "dvdrip",
+            "cam",
+            "ts",
+            "tc",
         ];
 
         let title_lower = title.to_lowercase();
-        
+
         for source in sources {
             if title_lower.contains(source) {
                 return Some(match source {
@@ -185,12 +216,12 @@ pub mod utils {
 
     pub fn extract_codec(title: &str) -> Option<String> {
         let codecs = vec![
-            "h.265", "hevc", "x265", "h264", "x264", "avc", 
-            "mpeg-2", "mpeg2", "xvid", "divx", "vp9", "av1"
+            "h.265", "hevc", "x265", "h264", "x264", "avc", "mpeg-2", "mpeg2", "xvid", "divx",
+            "vp9", "av1",
         ];
 
         let title_lower = title.to_lowercase();
-        
+
         for codec in codecs {
             if title_lower.contains(codec) {
                 return Some(match codec {
@@ -207,12 +238,21 @@ pub mod utils {
 
     pub fn extract_audio(title: &str) -> Option<String> {
         let audio_formats = vec![
-            "dts-hd.ma", "dts-hd", "dts", "truehd", "atmos", 
-            "dd+", "dolby.digital.plus", "ac3", "aac", "mp3", "flac"
+            "dts-hd.ma",
+            "dts-hd",
+            "dts",
+            "truehd",
+            "atmos",
+            "dd+",
+            "dolby.digital.plus",
+            "ac3",
+            "aac",
+            "mp3",
+            "flac",
         ];
 
         let title_lower = title.to_lowercase();
-        
+
         for audio in audio_formats {
             if title_lower.contains(audio) {
                 return Some(match audio {
@@ -230,7 +270,7 @@ pub mod utils {
     pub fn extract_release_group(title: &str) -> Option<String> {
         // Look for patterns like [GroupName], -GroupName, or GroupName at the end
         let patterns = vec![
-            r"\[([^\]]+)\]$",      // [GroupName]
+            r"\[([^\]]+)\]$",       // [GroupName]
             r"\-([a-zA-Z0-9\-]+)$", // -GroupName
             r"\.([a-zA-Z0-9\-]+)$", // .GroupName
             r"([a-zA-Z0-9\-]+)$",   // GroupName at end
@@ -255,11 +295,36 @@ pub mod utils {
 
     fn is_common_suffix(text: &str) -> bool {
         let common_suffixes = vec![
-            "1080p", "720p", "480p", "2160p", "4k", "bluray", "web", 
-            "x264", "x265", "h264", "h265", "aac", "ac3", "dts",
-            "proper", "repack", "extended", "unrated", "theatrical",
-            "internal", "french", "german", "spanish", "multisubs",
-            "subbed", "subforced", "nfo", "rarbg", "yts", "yify"
+            "1080p",
+            "720p",
+            "480p",
+            "2160p",
+            "4k",
+            "bluray",
+            "web",
+            "x264",
+            "x265",
+            "h264",
+            "h265",
+            "aac",
+            "ac3",
+            "dts",
+            "proper",
+            "repack",
+            "extended",
+            "unrated",
+            "theatrical",
+            "internal",
+            "french",
+            "german",
+            "spanish",
+            "multisubs",
+            "subbed",
+            "subforced",
+            "nfo",
+            "rarbg",
+            "yts",
+            "yify",
         ];
 
         common_suffixes.contains(&text.to_lowercase().as_str())
@@ -268,21 +333,21 @@ pub mod utils {
     pub fn extract_season_episode(title: &str) -> Option<(u32, u32)> {
         // Patterns like S01E02, S1E2, 1x02, Season 1 Episode 2, etc.
         let patterns = vec![
-            r"S(\d{1,2})E(\d{1,2})",           // S01E02
-            r"s(\d{1,2})e(\d{1,2})",           // s01e02
-            r"(\d{1,2})x(\d{1,2})",            // 1x02
+            r"S(\d{1,2})E(\d{1,2})",                    // S01E02
+            r"s(\d{1,2})e(\d{1,2})",                    // s01e02
+            r"(\d{1,2})x(\d{1,2})",                     // 1x02
             r"Season\s*(\d{1,2}).*Episode\s*(\d{1,2})", // Season 1 Episode 2
         ];
 
         let title_lower = title.to_lowercase();
-        
+
         for pattern in patterns {
             if let Ok(re) = regex::Regex::new(pattern) {
                 if let Some(caps) = re.captures(&title_lower) {
                     if let (Some(season), Some(episode)) = (caps.get(1), caps.get(2)) {
                         if let (Ok(s), Ok(e)) = (
                             season.as_str().parse::<u32>(),
-                            episode.as_str().parse::<u32>()
+                            episode.as_str().parse::<u32>(),
                         ) {
                             return Some((s, e));
                         }
@@ -297,8 +362,8 @@ pub mod utils {
     pub fn clean_title(mut title: String) -> String {
         // Remove common patterns and clean up
         let patterns_to_remove = vec![
-            r"\[.*?\]",                // [anything]
-            r"\(.*?\)",                // (anything) - but we want to keep years, so be careful
+            r"\[.*?\]",                                // [anything]
+            r"\(.*?\)", // (anything) - but we want to keep years, so be careful
             r"\..*?(?:avi|mkv|mp4|mov|wmv|flv|webm)$", // .extension
             r"(?i)\b(1080p|720p|480p|2160p|4k|bluray|web|hdtv|dvd|cam|ts|x264|x265|h264|h265|aac|ac3|dts|proper|repack|extended|unrated|theatrical|internal)\b",
             r"(?i)\b(dts-hd\.ma|dts-hd|truehd|atmos|dd\+)\b",
@@ -324,169 +389,166 @@ pub mod utils {
 }
 
 /// Normalize title for rating API requests
-/// 
+///
 /// This method extracts information needed for rating API calls:
 /// - Detects if title contains "сериал" (case-insensitive)
 /// - Extracts season number if present (Russian or English patterns)
 /// - Extracts year from title
 /// - Removes "сериал", year, and season info to create clean title
 /// - Converts to lowercase for API compatibility
-/// 
+///
 /// Returns a struct with cleaned title, year, is_show flag, and optional season.
 /// If season is None, assume it's the latest season (will be determined from TMDB later).
 pub fn normalize_for_rating(raw_title: &str) -> RatingTitleInfo {
-        use regex::Regex;
-        use once_cell::sync::Lazy;
-        
-        static RE_SERIES_MARKER: Lazy<Regex> = Lazy::new(|| {
-            // Safe to unwrap: regex pattern is hardcoded and valid
-            Regex::new(r"(?i)\bсериал\b").expect("Invalid regex pattern for series marker")
-        });
-        
-        static RE_YEAR: Lazy<Regex> = Lazy::new(|| {
-            // Safe to unwrap: regex pattern is hardcoded and valid
-            Regex::new(r"\b(19|20)\d{2}\b").expect("Invalid regex pattern for year")
-        });
-        
-        static RE_RUSSIAN_SEASON: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?i)(?:сезон\s*(\d+)|(\d+)\s*сезон)").unwrap()
-        });
-        
-        static RE_ENGLISH_SEASON: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"(?i)(?:season\s*(\d+)|s(\d{1,2})(?:e\d+)?)").unwrap()
-        });
-        
-        static RE_YEAR_IN_PARENS: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\s*\(\s*\d{4}\s*\)").unwrap()
-        });
-        
-        static RE_STANDALONE_YEAR: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\b(19|20)\d{2}\b").unwrap()
-        });
-        
-        static RE_MULTISPACE: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"\s+").unwrap()
-        });
-        
-        let mut title = raw_title.trim().to_string();
-        
-        // Step 1: Detect if it's a series/show
-        let is_show = RE_SERIES_MARKER.is_match(&title);
-        
-        // Step 2: Extract season number (if present)
-        let season = {
-            // Try Russian patterns first: "Сезон 1", "1 Сезон"
-            let mut extracted_season = None;
-            if let Some(caps) = RE_RUSSIAN_SEASON.captures(&title) {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    static RE_SERIES_MARKER: Lazy<Regex> = Lazy::new(|| {
+        // Safe to unwrap: regex pattern is hardcoded and valid
+        Regex::new(r"(?i)\bсериал\b").expect("Invalid regex pattern for series marker")
+    });
+
+    static RE_YEAR: Lazy<Regex> = Lazy::new(|| {
+        // Safe to unwrap: regex pattern is hardcoded and valid
+        Regex::new(r"\b(19|20)\d{2}\b").expect("Invalid regex pattern for year")
+    });
+
+    static RE_RUSSIAN_SEASON: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)(?:сезон\s*(\d+)|(\d+)\s*сезон)").unwrap());
+
+    static RE_ENGLISH_SEASON: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)(?:season\s*(\d+)|s(\d{1,2})(?:e\d+)?)").unwrap());
+
+    static RE_YEAR_IN_PARENS: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\s*\(\s*\d{4}\s*\)").unwrap());
+
+    static RE_STANDALONE_YEAR: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b(19|20)\d{2}\b").unwrap());
+
+    static RE_MULTISPACE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s+").unwrap());
+
+    let mut title = raw_title.trim().to_string();
+
+    // Step 1: Detect if it's a series/show
+    let is_show = RE_SERIES_MARKER.is_match(&title);
+
+    // Step 2: Extract season number (if present)
+    let season = {
+        // Try Russian patterns first: "Сезон 1", "1 Сезон"
+        let mut extracted_season = None;
+        if let Some(caps) = RE_RUSSIAN_SEASON.captures(&title) {
+            if let Some(season_str) = caps.get(1).or_else(|| caps.get(2)) {
+                if let Ok(season) = season_str.as_str().parse::<u32>() {
+                    extracted_season = Some(season);
+                }
+            }
+        }
+
+        // Try English patterns if Russian didn't match: "Season 1", "S01", "S1"
+        if extracted_season.is_none() {
+            if let Some(caps) = RE_ENGLISH_SEASON.captures(&title) {
                 if let Some(season_str) = caps.get(1).or_else(|| caps.get(2)) {
                     if let Ok(season) = season_str.as_str().parse::<u32>() {
                         extracted_season = Some(season);
                     }
                 }
             }
-            
-            // Try English patterns if Russian didn't match: "Season 1", "S01", "S1"
-            if extracted_season.is_none() {
-                if let Some(caps) = RE_ENGLISH_SEASON.captures(&title) {
-                    if let Some(season_str) = caps.get(1).or_else(|| caps.get(2)) {
-                        if let Ok(season) = season_str.as_str().parse::<u32>() {
-                            extracted_season = Some(season);
-                        }
+        }
+
+        extracted_season
+    };
+
+    // Step 3: Extract year before cleaning
+    let year = {
+        // First try to find year in parentheses: (2025)
+        let mut extracted_year = None;
+        if let Some(caps) = Regex::new(r"\((\s*(19|20)\d{2}\s*)\)")
+            .unwrap()
+            .captures(&title)
+        {
+            if let Some(year_str) = caps.get(1) {
+                if let Ok(year) = year_str.as_str().trim().parse::<u32>() {
+                    if year >= 1900 && year <= 2100 {
+                        extracted_year = Some(year);
                     }
                 }
             }
-            
-            extracted_season
-        };
-        
-        // Step 3: Extract year before cleaning
-        let year = {
-            // First try to find year in parentheses: (2025)
-            let mut extracted_year = None;
-            if let Some(caps) = Regex::new(r"\((\s*(19|20)\d{2}\s*)\)").unwrap().captures(&title) {
-                if let Some(year_str) = caps.get(1) {
-                    if let Ok(year) = year_str.as_str().trim().parse::<u32>() {
+        }
+
+        // Then try standalone year pattern
+        if extracted_year.is_none() {
+            if let Some(caps) = RE_YEAR.captures(&title) {
+                if let Some(year_str) = caps.get(0) {
+                    if let Ok(year) = year_str.as_str().parse::<u32>() {
                         if year >= 1900 && year <= 2100 {
                             extracted_year = Some(year);
                         }
                     }
                 }
             }
-            
-            // Then try standalone year pattern
-            if extracted_year.is_none() {
-                if let Some(caps) = RE_YEAR.captures(&title) {
-                    if let Some(year_str) = caps.get(0) {
-                        if let Ok(year) = year_str.as_str().parse::<u32>() {
-                            if year >= 1900 && year <= 2100 {
-                                extracted_year = Some(year);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            extracted_year
-        };
-        
-        // Step 4: Clean the title
-        // Remove "сериал" (case-insensitive)
-        title = RE_SERIES_MARKER.replace_all(&title, " ").to_string();
-        
-        // Remove Russian season patterns
-        title = RE_RUSSIAN_SEASON.replace_all(&title, " ").to_string();
-        // Remove "Серия" (episode marker) if present
-        title = Regex::new(r"(?i)\bсерия\s*\d*\b")
-            .unwrap()
-            .replace_all(&title, " ")
-            .to_string();
-        
-        // Remove English season patterns
-        title = RE_ENGLISH_SEASON.replace_all(&title, " ").to_string();
-        // Remove "Episode" markers
-        title = Regex::new(r"(?i)\bepisode\s*\d*\b")
-            .unwrap()
-            .replace_all(&title, " ")
-            .to_string();
-        
-        // Remove year in parentheses: (2025)
-        title = RE_YEAR_IN_PARENS.replace_all(&title, "").to_string();
-        
-        // Remove standalone year numbers
-        title = RE_STANDALONE_YEAR.replace_all(&title, "").to_string();
-        
-        // Remove other common noise phrases that might interfere
-        let noise_patterns = vec![
-            r"(?i)\bскачать\s+торрент\b",
-            r"(?i)\bторрент\b",
-            r"(?i)\bскачать\b",
-        ];
-        
-        for pattern in noise_patterns {
-            title = Regex::new(pattern).unwrap()
-                .replace_all(&title, " ")
-                .to_string();
         }
-        
-        // Clean up multiple spaces and trim
-        title = RE_MULTISPACE.replace_all(&title, " ").to_string();
-        title = title.trim().to_string();
-        
-        // Convert to lowercase for API compatibility
-        title = title.to_lowercase();
-        
-        RatingTitleInfo {
-            cleaned_title: title,
-            year,
-            is_show,
-            season, // None means assume latest season (will be determined from TMDB later)
+
+        extracted_year
+    };
+
+    // Step 4: Clean the title
+    // Remove "сериал" (case-insensitive)
+    title = RE_SERIES_MARKER.replace_all(&title, " ").to_string();
+
+    // Remove Russian season patterns
+    title = RE_RUSSIAN_SEASON.replace_all(&title, " ").to_string();
+    // Remove "Серия" (episode marker) if present
+    title = Regex::new(r"(?i)\bсерия\s*\d*\b")
+        .unwrap()
+        .replace_all(&title, " ")
+        .to_string();
+
+    // Remove English season patterns
+    title = RE_ENGLISH_SEASON.replace_all(&title, " ").to_string();
+    // Remove "Episode" markers
+    title = Regex::new(r"(?i)\bepisode\s*\d*\b")
+        .unwrap()
+        .replace_all(&title, " ")
+        .to_string();
+
+    // Remove year in parentheses: (2025)
+    title = RE_YEAR_IN_PARENS.replace_all(&title, "").to_string();
+
+    // Remove standalone year numbers
+    title = RE_STANDALONE_YEAR.replace_all(&title, "").to_string();
+
+    // Remove other common noise phrases that might interfere
+    let noise_patterns = vec![
+        r"(?i)\bскачать\s+торрент\b",
+        r"(?i)\bторрент\b",
+        r"(?i)\bскачать\b",
+    ];
+
+    for pattern in noise_patterns {
+        title = Regex::new(pattern)
+            .unwrap()
+            .replace_all(&title, " ")
+            .to_string();
+    }
+
+    // Clean up multiple spaces and trim
+    title = RE_MULTISPACE.replace_all(&title, " ").to_string();
+    title = title.trim().to_string();
+
+    // Convert to lowercase for API compatibility
+    title = title.to_lowercase();
+
+    RatingTitleInfo {
+        cleaned_title: title,
+        year,
+        is_show,
+        season, // None means assume latest season (will be determined from TMDB later)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::utils::*;
+    use super::*;
 
     #[test]
     fn test_extract_year() {

@@ -1,14 +1,17 @@
 <script lang="ts">
-  import { uiStore } from "../../stores/uiStore";
+  import { uiStore, setCurrentPage, type Page } from "../../stores/uiStore";
   import { searchStore, setLoading, setQuery } from "../../stores/searchStore";
   import { invoke } from "@tauri-apps/api/core";
   import Header from "./Header.svelte";
   import Sidebar from "./Sidebar.svelte";
+  import { onDestroy, onMount } from "svelte";
 
   let sidebarCollapsed = false;
   let mobileMenuOpen = false;
   let previousFocus: HTMLElement | null = null;
   let unsubscribe: (() => void) | null = null;
+  let headerComponent: any = null;
+  let openModals: Set<string> = new Set();
 
   function handleMobileMenuToggle() {
     if (!mobileMenuOpen) {
@@ -20,11 +23,40 @@
     }
   }
 
-  function handleEscapeKey(e: KeyboardEvent) {
-    if (e.key === "Escape" && mobileMenuOpen) {
-      mobileMenuOpen = false;
-      if (previousFocus) {
-        previousFocus.focus();
+  function handleKeyDown(e: KeyboardEvent) {
+    // Ctrl+K or Cmd+K: Focus search input (Property 68)
+    if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+      e.preventDefault();
+      if (headerComponent && headerComponent.focusSearch) {
+        headerComponent.focusSearch();
+      }
+    }
+
+    // Escape: Close mobile menu or modals (Property 69)
+    if (e.key === "Escape") {
+      if (mobileMenuOpen) {
+        mobileMenuOpen = false;
+        if (previousFocus) {
+          previousFocus.focus();
+        }
+      }
+      // Dispatch event for modals to listen to
+      window.dispatchEvent(new CustomEvent("mainlayout:escape"));
+    }
+
+    // Number keys 1-4: Switch pages (Property 70)
+    // 1 = Discover, 2 = Library, 3 = Downloads, 4 = Settings
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+      const pageMap: Record<string, Page> = {
+        "1": "discover",
+        "2": "library",
+        "3": "downloads",
+        "4": "settings",
+      };
+
+      if (e.key in pageMap) {
+        e.preventDefault();
+        setCurrentPage(pageMap[e.key]);
       }
     }
   }
@@ -48,18 +80,15 @@
     }
   }
 
-  // Cleanup on destroy
-  import { onDestroy, onMount } from "svelte";
-
   onMount(() => {
     // Subscribe to UI store for sidebar state
     unsubscribe = uiStore.subscribe((state) => {
       sidebarCollapsed = state.sidebarCollapsed;
     });
 
-    document.addEventListener("keydown", handleEscapeKey);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleEscapeKey);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   });
 
@@ -67,13 +96,13 @@
     if (unsubscribe) {
       unsubscribe();
     }
-    document.removeEventListener("keydown", handleEscapeKey);
+    document.removeEventListener("keydown", handleKeyDown);
   });
 </script>
 
 <div class="flex flex-col h-screen bg-netflix-black overflow-hidden">
   <!-- Header (60px fixed) -->
-  <Header on:search={handleSearch} />
+  <Header bind:this={headerComponent} on:search={handleSearch} />
 
   <!-- Main content area (flex-1 with flex row) -->
   <div class="flex flex-1 overflow-hidden relative">

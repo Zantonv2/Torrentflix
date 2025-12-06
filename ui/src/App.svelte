@@ -2,8 +2,11 @@
   import { onMount, onDestroy } from "svelte";
   import { initializeI18n } from "./i18n/config";
   import MainLayout from "./components/layout/MainLayout.svelte";
-  import { uiStore, type Page } from "./stores/uiStore";
+  import { uiStore, type Page, setCurrentPage } from "./stores/uiStore";
+  import { themeStore } from "./stores/themeStore";
+  import { languageStore } from "./stores/languageStore";
   import Loading from "./components/core/Loading.svelte";
+  import SetupWizard from "./components/core/SetupWizard.svelte";
 
   // Page components
   import DiscoverPage from "./components/pages/Discover.svelte";
@@ -13,7 +16,10 @@
 
   let isInitialLoading = true;
   let currentPage: Page = "discover";
+  let showSetupWizard = false;
   let unsubscribe: (() => void) | null = null;
+  let unsubscribeTheme: (() => void) | null = null;
+  let unsubscribeLanguage: (() => void) | null = null;
 
   onMount(async () => {
     console.log("🚀 App.svelte onMount() called");
@@ -24,6 +30,16 @@
     // Subscribe to current page from uiStore
     unsubscribe = uiStore.subscribe((state) => {
       currentPage = state.currentPage;
+    });
+
+    // Subscribe to theme changes
+    unsubscribeTheme = themeStore.subscribe(() => {
+      // Theme is automatically applied via the store
+    });
+
+    // Subscribe to language changes
+    unsubscribeLanguage = languageStore.subscribe(() => {
+      // Language is automatically applied via the store
     });
 
     // Failsafe: if loading takes more than 10 seconds, show error
@@ -40,13 +56,32 @@
 
     isInitialLoading = false;
     clearTimeout(failsafeTimeout);
+
+    // Check if settings are incomplete and show setup wizard
+    // This would be triggered on first app launch
+    const hasSeenSetupWizard = localStorage.getItem("hasSeenSetupWizard");
+    if (!hasSeenSetupWizard) {
+      showSetupWizard = true;
+      localStorage.setItem("hasSeenSetupWizard", "true");
+    }
+
     console.log("✅ onMount() complete");
   });
 
+  function handleNavigateToSettings() {
+    setCurrentPage("settings");
+  }
+
   onDestroy(() => {
-    // Clean up store subscription
+    // Clean up store subscriptions
     if (unsubscribe) {
       unsubscribe();
+    }
+    if (unsubscribeTheme) {
+      unsubscribeTheme();
+    }
+    if (unsubscribeLanguage) {
+      unsubscribeLanguage();
     }
   });
 </script>
@@ -76,6 +111,13 @@
         </div>
       {/if}
     </MainLayout>
+
+    <!-- Setup Wizard Modal -->
+    <SetupWizard
+      open={showSetupWizard}
+      onClose={() => (showSetupWizard = false)}
+      onNavigateToSettings={handleNavigateToSettings}
+    />
   {/if}
 </div>
 

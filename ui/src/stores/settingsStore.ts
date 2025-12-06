@@ -44,6 +44,9 @@ export interface Settings {
   proxyEnabled: boolean;
   proxyAddress?: string;
   proxyPort?: number;
+
+  // UI Preferences
+  paginationMode: 'infinite' | 'button';
 }
 
 export interface SettingsState {
@@ -70,6 +73,7 @@ const defaultSettings: Settings = {
   maxConcurrentDownloads: 3,
   debugMode: false,
   proxyEnabled: false,
+  paginationMode: 'infinite',
 };
 
 const initialState: SettingsState = {

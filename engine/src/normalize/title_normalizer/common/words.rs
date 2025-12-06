@@ -1,5 +1,5 @@
+use crate::normalize::title_normalizer::common::SEPS;
 use std::collections::HashSet;
-use crate::title_normalizer::common::SEPS;
 
 /// Iterator over words in a string, handling separators properly
 pub struct WordIterator<'a> {
@@ -16,7 +16,7 @@ impl<'a> WordIterator<'a> {
             separators: SEPS,
         }
     }
-    
+
     pub fn new_with_separators(text: &'a str, separators: &'a str) -> Self {
         Self {
             text,
@@ -28,25 +28,31 @@ impl<'a> WordIterator<'a> {
 
 impl<'a> Iterator for WordIterator<'a> {
     type Item = &'a str;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         // Skip leading separators
-        while self.position < self.text.len() 
-            && self.separators.contains(self.text.chars().nth(self.position)?) {
+        while self.position < self.text.len()
+            && self
+                .separators
+                .contains(self.text.chars().nth(self.position)?)
+        {
             self.position += 1;
         }
-        
+
         if self.position >= self.text.len() {
             return None;
         }
-        
+
         // Find the next separator
         let start = self.position;
-        while self.position < self.text.len() 
-            && !self.separators.contains(self.text.chars().nth(self.position)?) {
+        while self.position < self.text.len()
+            && !self
+                .separators
+                .contains(self.text.chars().nth(self.position)?)
+        {
             self.position += 1;
         }
-        
+
         let word = &self.text[start..self.position];
         if word.is_empty() {
             None
@@ -83,17 +89,17 @@ pub fn is_numeric_word(text: &str) -> bool {
 
 /// Check if a string is a mixed alphanumeric word
 pub fn is_alphanumeric_word(text: &str) -> bool {
-    !text.is_empty() && 
-    text.chars().all(|c| c.is_alphanumeric()) &&
-    text.chars().any(|c| c.is_alphabetic()) &&
-    text.chars().any(|c| c.is_numeric())
+    !text.is_empty()
+        && text.chars().all(|c| c.is_alphanumeric())
+        && text.chars().any(|c| c.is_alphabetic())
+        && text.chars().any(|c| c.is_numeric())
 }
 
 /// Get unique words from a text, preserving order
 pub fn get_unique_words(text: &str) -> Vec<String> {
     let mut seen = HashSet::new();
     let mut unique_words = Vec::new();
-    
+
     for word in WordIterator::new(text) {
         let word_lower = word.to_lowercase();
         if !seen.contains(&word_lower) {
@@ -101,7 +107,7 @@ pub fn get_unique_words(text: &str) -> Vec<String> {
             unique_words.push(word.to_string());
         }
     }
-    
+
     unique_words
 }
 
@@ -125,8 +131,7 @@ pub fn find_words_of_length(text: &str, length: usize) -> Vec<&str> {
 /// Check if text contains a specific word (case-insensitive)
 pub fn contains_word(text: &str, target_word: &str) -> bool {
     let target_lower = target_word.to_lowercase();
-    WordIterator::new(text)
-        .any(|word| word.to_lowercase() == target_lower)
+    WordIterator::new(text).any(|word| word.to_lowercase() == target_lower)
 }
 
 /// Find all occurrences of a specific word (case-insensitive)
@@ -134,14 +139,14 @@ pub fn find_word_occurrences(text: &str, target_word: &str) -> Vec<usize> {
     let target_lower = target_word.to_lowercase();
     let mut positions = Vec::new();
     let mut current_pos = 0;
-    
+
     for word in WordIterator::new(text) {
         if word.to_lowercase() == target_lower {
             positions.push(current_pos);
         }
         current_pos += word.len() + 1; // +1 for separator
     }
-    
+
     positions
 }
 
@@ -156,7 +161,7 @@ pub fn replace_word(text: &str, old_word: &str, new_word: &str) -> String {
             }
         })
         .collect();
-    
+
     words.join(" ")
 }
 
@@ -189,7 +194,7 @@ pub struct WordStats {
 
 pub fn get_word_stats(text: &str) -> WordStats {
     let words: Vec<&str> = WordIterator::new(text).collect();
-    
+
     if words.is_empty() {
         return WordStats {
             total_words: 0,
@@ -199,14 +204,14 @@ pub fn get_word_stats(text: &str) -> WordStats {
             shortest_word: None,
         };
     }
-    
+
     let unique_count: HashSet<_> = words.iter().map(|w| w.to_lowercase()).collect();
     let total_length: usize = words.iter().map(|w| w.len()).sum();
     let average_length = total_length as f64 / words.len() as f64;
-    
+
     let longest = words.iter().max_by_key(|w| w.len()).map(|w| w.to_string());
     let shortest = words.iter().min_by_key(|w| w.len()).map(|w| w.to_string());
-    
+
     WordStats {
         total_words: words.len(),
         unique_words: unique_count.len(),
@@ -231,7 +236,7 @@ pub fn is_title_case(word: &str) -> bool {
     if word.is_empty() {
         return false;
     }
-    
+
     let chars: Vec<char> = word.chars().collect();
     chars[0].is_uppercase() && chars.iter().skip(1).all(|c| c.is_lowercase())
 }
@@ -240,29 +245,32 @@ pub fn is_title_case(word: &str) -> bool {
 mod tests {
     use super::*;
     use regex::Regex;
-    
+
     #[test]
     fn test_word_iterator() {
         let text = "Hello World Test";
         let words: Vec<&str> = WordIterator::new(text).collect();
         assert_eq!(words, vec!["Hello", "World", "Test"]);
-        
+
         let text = "Multiple   spaces   here";
         let words: Vec<&str> = WordIterator::new(text).collect();
         assert_eq!(words, vec!["Multiple", "spaces", "here"]);
-        
+
         let text = "  Leading and trailing  ";
         let words: Vec<&str> = WordIterator::new(text).collect();
         assert_eq!(words, vec!["Leading", "and", "trailing"]);
     }
-    
+
     #[test]
     fn test_split_words() {
-        assert_eq!(split_words("Hello.World-Test"), vec!["Hello", "World", "Test"]);
+        assert_eq!(
+            split_words("Hello.World-Test"),
+            vec!["Hello", "World", "Test"]
+        );
         assert_eq!(split_words("Multiple   spaces"), vec!["Multiple", "spaces"]);
         assert_eq!(split_words(""), Vec::<&str>::new());
     }
-    
+
     #[test]
     fn test_is_word() {
         assert!(is_word("hello"));
@@ -271,7 +279,7 @@ mod tests {
         assert!(!is_word("hello-world"));
         assert!(!is_word(""));
     }
-    
+
     #[test]
     fn test_is_alpha_word() {
         assert!(is_alpha_word("hello"));
@@ -279,7 +287,7 @@ mod tests {
         assert!(!is_alpha_word("test123"));
         assert!(!is_alpha_word("test_123"));
     }
-    
+
     #[test]
     fn test_is_numeric_word() {
         assert!(is_numeric_word("123"));
@@ -287,7 +295,7 @@ mod tests {
         assert!(!is_numeric_word("test123"));
         assert!(!is_numeric_word("12a34"));
     }
-    
+
     #[test]
     fn test_is_alphanumeric_word() {
         assert!(is_alphanumeric_word("test123"));
@@ -295,74 +303,77 @@ mod tests {
         assert!(!is_alphanumeric_word("test"));
         assert!(!is_alphanumeric_word("123"));
     }
-    
+
     #[test]
     fn test_get_unique_words() {
         let text = "hello world hello test world";
         let unique = get_unique_words(text);
         assert_eq!(unique, vec!["hello", "world", "test"]);
     }
-    
+
     #[test]
     fn test_count_words() {
         assert_eq!(count_words("Hello World Test"), 3);
         assert_eq!(count_words("Multiple   spaces   here"), 3);
         assert_eq!(count_words(""), 0);
     }
-    
+
     #[test]
     fn test_find_longest_word() {
         assert_eq!(find_longest_word("short longest word"), Some("longest"));
         assert_eq!(find_longest_word(""), None);
     }
-    
+
     #[test]
     fn test_find_words_of_length() {
         let words = find_words_of_length("cat dog fish bird", 3);
         assert_eq!(words, vec!["cat", "dog"]);
     }
-    
+
     #[test]
     fn test_contains_word() {
         assert!(contains_word("Hello World Test", "world"));
         assert!(contains_word("Hello WORLD Test", "world"));
         assert!(!contains_word("Hello Test", "world"));
     }
-    
+
     #[test]
     fn test_replace_word() {
-        assert_eq!(replace_word("hello world hello", "world", "earth"), "hello earth hello");
+        assert_eq!(
+            replace_word("hello world hello", "world", "earth"),
+            "hello earth hello"
+        );
         assert_eq!(replace_word("HELLO world", "hello", "hi"), "hi world");
     }
-    
+
     #[test]
     fn test_extract_words_matching() {
         let pattern = Regex::new(r"^[A-Z][a-z]+$").unwrap();
         let words = extract_words_matching("Hello world Test Pattern", &pattern);
         assert_eq!(words, vec!["Hello", "Test", "Pattern"]);
     }
-    
+
     #[test]
     fn test_filter_words() {
         let words = filter_words("hello world test123 456", |word| word.len() > 4);
         assert_eq!(words, vec!["hello", "world", "test123"]);
     }
-    
+
     #[test]
     fn test_get_word_stats() {
         let text = "hello world hello test";
         let stats = get_word_stats(text);
-        
+
         assert_eq!(stats.total_words, 4);
         assert_eq!(stats.unique_words, 3);
         assert!(stats.average_word_length > 0.0);
         assert_eq!(stats.longest_word, Some("hello".to_string()));
         assert_eq!(stats.shortest_word, Some("test".to_string()));
-        
+
         let empty_stats = get_word_stats("");
         assert_eq!(empty_stats.total_words, 0);
     }
-    
+
     #[test]
     fn test_is_numeric_like() {
         assert!(is_numeric_like("test123"));
@@ -370,7 +381,7 @@ mod tests {
         assert!(is_numeric_like("version1.2"));
         assert!(!is_numeric_like("hello"));
     }
-    
+
     #[test]
     fn test_is_abbreviation() {
         assert!(is_abbreviation("USA"));
@@ -378,7 +389,7 @@ mod tests {
         assert!(!is_abbreviation("TOOLONG"));
         assert!(!is_abbreviation("Hello"));
     }
-    
+
     #[test]
     fn test_is_title_case() {
         assert!(is_title_case("Hello"));

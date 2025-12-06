@@ -1,7 +1,6 @@
-use anyhow::{Result, anyhow};
-use std::collections::HashMap;
+use anyhow::Result;
 
-use crate::models::{TorrentResult, ParsedMedia, MediaType};
+use crate::models::{MediaType, ParsedMedia, TorrentResult};
 use crate::normalize::MediaNormalizer;
 
 /// Wrapper for the advanced title normalizer core
@@ -22,9 +21,14 @@ impl TitleNormalizerWrapper {
         }
     }
 
-    fn core_to_parsed_media(&self, core_result: crate::normalize::title_normalizer_core::ParsedTorrentMetadata) -> Result<ParsedMedia> {
+    fn core_to_parsed_media(
+        &self,
+        core_result: crate::normalize::title_normalizer_core::ParsedTorrentMetadata,
+    ) -> Result<ParsedMedia> {
         let title = core_result.title;
-        let media_type = if core_result.tags.contains_key("episode") && !core_result.tags["episode"].is_empty() {
+        let media_type = if core_result.tags.contains_key("episode")
+            && !core_result.tags["episode"].is_empty()
+        {
             MediaType::Series
         } else {
             MediaType::Movie
@@ -42,10 +46,9 @@ impl TitleNormalizerWrapper {
             if !episodes.is_empty() {
                 // Parse season/episode from the first episode tag
                 if let Some(episode_str) = episodes.first() {
-                    if let Ok((season, episode)) = self.parse_season_episode(episode_str) {
-                        parsed.season = season;
-                        parsed.episode = episode;
-                    }
+                    let (season, episode) = self.parse_season_episode(episode_str);
+                    parsed.season = season;
+                    parsed.episode = episode;
                 }
             }
         }
@@ -97,7 +100,7 @@ impl TitleNormalizerWrapper {
                 if let (Some(season), Some(episode)) = (caps.get(1), caps.get(2)) {
                     if let (Ok(s), Ok(e)) = (
                         season.as_str().parse::<u32>(),
-                        episode.as_str().parse::<u32>()
+                        episode.as_str().parse::<u32>(),
                     ) {
                         return (Some(s), Some(e));
                     }
@@ -110,7 +113,7 @@ impl TitleNormalizerWrapper {
                 if let (Some(season), Some(episode)) = (caps.get(1), caps.get(2)) {
                     if let (Ok(s), Ok(e)) = (
                         season.as_str().parse::<u32>(),
-                        episode.as_str().parse::<u32>()
+                        episode.as_str().parse::<u32>(),
                     ) {
                         return (Some(s), Some(e));
                     }
@@ -124,7 +127,9 @@ impl TitleNormalizerWrapper {
 
 impl MediaNormalizer for TitleNormalizerWrapper {
     fn normalize(&self, torrent_result: &TorrentResult) -> Result<ParsedMedia> {
-        let core_result = crate::normalize::title_normalizer_core::parse_torrent_metadata(torrent_result.title.clone());
+        let core_result = crate::normalize::title_normalizer_core::parse_torrent_metadata(
+            torrent_result.title.clone(),
+        );
         self.core_to_parsed_media(core_result)
     }
 
@@ -157,10 +162,10 @@ mod tests {
         );
 
         let result = wrapper.normalize(&torrent);
-        
+
         // Should successfully parse
         assert!(result.is_ok());
-        
+
         let parsed = result.unwrap();
         assert_eq!(parsed.title, "Inception");
         assert_eq!(parsed.year, Some(2010));
@@ -183,7 +188,7 @@ mod tests {
         );
 
         let result = wrapper.normalize(&torrent).unwrap();
-        
+
         assert_eq!(result.title, "Breaking Bad");
         assert_eq!(result.year, Some(2008));
         assert_eq!(result.season, Some(1));

@@ -1,5 +1,5 @@
+use crate::normalize::title_normalizer::common::{SEPS, TITLE_SEPS};
 use regex::Regex;
-use crate::title_normalizer::common::{SEPS, TITLE_SEPS};
 
 /// Separators for cleanup (excluding dots and dashes to preserve them after punctuation reduction)
 pub const CLEANUP_SEPS: &str = " ,_;:|()[]{}'\"";
@@ -16,32 +16,34 @@ lazy_static::lazy_static! {
 /// Clean up text by removing unwanted characters and normalizing whitespace
 pub fn cleanup(text: &str) -> String {
     let mut result = text.to_string();
-    
+
     // Clean up repeated punctuation first
-    result = REPEATED_PUNCTUATION_RE.replace_all(&result, "$1").to_string();
-    
+    result = REPEATED_PUNCTUATION_RE
+        .replace_all(&result, "$1")
+        .to_string();
+
     // Replace separators with spaces (excluding dashes to preserve them after punctuation reduction)
     result = CLEANUP_SEPS_RE.replace_all(&result, " ").to_string();
-    
+
     // Remove unwanted characters
     result = CLEANUP_RE.replace_all(&result, " ").to_string();
-    
+
     // Normalize whitespace
     result = MULTISPACE_RE.replace_all(&result, " ").to_string();
-    
+
     result.trim().to_string()
 }
 
 /// Raw cleanup that preserves more characters
 pub fn raw_cleanup(text: &str) -> String {
     let mut result = text.to_string();
-    
+
     // Replace separators with spaces
     result = SEPS_RE.replace_all(&result, " ").to_string();
-    
+
     // Normalize whitespace
     result = MULTISPACE_RE.replace_all(&result, " ").to_string();
-    
+
     result.trim().to_string()
 }
 
@@ -53,16 +55,16 @@ pub fn strip(text: &str) -> String {
 /// Clean up title-specific separators
 pub fn cleanup_title(text: &str) -> String {
     let mut result = text.to_string();
-    
+
     // Replace title separators with spaces (use TITLE_CLEANUP_RE to preserve dots for year extraction)
     result = TITLE_CLEANUP_RE.replace_all(&result, " ").to_string();
-    
+
     // Also replace backslashes which aren't in TITLE_SEPS
     result = result.replace('\\', " ");
-    
+
     // Normalize whitespace
     result = MULTISPACE_RE.replace_all(&result, " ").to_string();
-    
+
     result.trim().to_string()
 }
 
@@ -104,23 +106,17 @@ pub fn lowercase(text: &str) -> String {
 
 /// Remove all non-alphanumeric characters
 pub fn alphanumeric_only(text: &str) -> String {
-    text.chars()
-        .filter(|c| c.is_alphanumeric())
-        .collect()
+    text.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
 /// Remove all non-alphabetic characters
 pub fn alphabetic_only(text: &str) -> String {
-    text.chars()
-        .filter(|c| c.is_alphabetic())
-        .collect()
+    text.chars().filter(|c| c.is_alphabetic()).collect()
 }
 
 /// Remove all non-numeric characters
 pub fn numeric_only(text: &str) -> String {
-    text.chars()
-        .filter(|c| c.is_numeric())
-        .collect()
+    text.chars().filter(|c| c.is_numeric()).collect()
 }
 
 /// Normalize dashes (replace various dash types with standard dash)
@@ -133,14 +129,14 @@ pub fn remove_duplicate_words(text: &str) -> String {
     let words: Vec<&str> = text.split_whitespace().collect();
     let mut seen = std::collections::HashSet::new();
     let mut result = Vec::new();
-    
+
     for word in words {
         if !seen.contains(word) {
             seen.insert(word);
             result.push(word);
         }
     }
-    
+
     result.join(" ")
 }
 
@@ -152,7 +148,7 @@ pub fn remove_extra_spaces(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_cleanup() {
         assert_eq!(cleanup("Hello, World!"), "Hello World");
@@ -160,34 +156,37 @@ mod tests {
         assert_eq!(cleanup("Repeated---punctuation"), "Repeated-punctuation");
         assert_eq!(cleanup("Mixed..up__chars"), "Mixed.up chars");
     }
-    
+
     #[test]
     fn test_raw_cleanup() {
         assert_eq!(raw_cleanup("Hello.World"), "Hello World");
         assert_eq!(raw_cleanup("Test-File_Name"), "Test File Name");
         assert_eq!(raw_cleanup("Multiple   spaces"), "Multiple spaces");
     }
-    
+
     #[test]
     fn test_strip() {
         assert_eq!(strip("  Hello World  "), "Hello World");
         assert_eq!(strip("\tTest\n"), "Test");
         assert_eq!(strip("NoSpaces"), "NoSpaces");
     }
-    
+
     #[test]
     fn test_cleanup_title() {
         assert_eq!(cleanup_title("Movie-2023/1080p"), "Movie 2023 1080p");
         assert_eq!(cleanup_title("Show|Season+1"), "Show Season 1");
-        assert_eq!(cleanup_title("Title/With\\Separators"), "Title With Separators");
+        assert_eq!(
+            cleanup_title("Title/With\\Separators"),
+            "Title With Separators"
+        );
     }
-    
+
     #[test]
     fn test_reorder_title() {
         assert_eq!(reorder_title("  Messy   Title  "), "Messy Title");
         assert_eq!(reorder_title("Clean.Title"), "Clean Title");
     }
-    
+
     #[test]
     fn test_title_case() {
         assert_eq!(title_case("hello world"), "Hello World");
@@ -195,54 +194,60 @@ mod tests {
         assert_eq!(title_case("mixed CASE Title"), "Mixed Case Title");
         assert_eq!(title_case(""), "");
     }
-    
+
     #[test]
     fn test_uppercase() {
         assert_eq!(uppercase("hello"), "HELLO");
         assert_eq!(uppercase("Mixed Case"), "MIXED CASE");
     }
-    
+
     #[test]
     fn test_lowercase() {
         assert_eq!(lowercase("HELLO"), "hello");
         assert_eq!(lowercase("Mixed Case"), "mixed case");
     }
-    
+
     #[test]
     fn test_alphanumeric_only() {
         assert_eq!(alphanumeric_only("Hello, World! 123"), "HelloWorld123");
         assert_eq!(alphanumeric_only("Test@#$%^File"), "TestFile");
     }
-    
+
     #[test]
     fn test_alphabetic_only() {
         assert_eq!(alphabetic_only("Hello123 World!"), "HelloWorld");
         assert_eq!(alphabetic_only("Test@#$%^File"), "TestFile");
     }
-    
+
     #[test]
     fn test_numeric_only() {
         assert_eq!(numeric_only("Hello123 World!"), "123");
         assert_eq!(numeric_only("Test456File"), "456");
     }
-    
+
     #[test]
     fn test_normalize_dashes() {
         assert_eq!(normalize_dashes("Hello–World—Test"), "Hello-World-Test");
         assert_eq!(normalize_dashes("No dashes"), "No dashes");
     }
-    
+
     #[test]
     fn test_remove_duplicate_words() {
         assert_eq!(remove_duplicate_words("hello world hello"), "hello world");
         assert_eq!(remove_duplicate_words("Test Test Test"), "Test");
-        assert_eq!(remove_duplicate_words("Mixed CASE mixed case"), "Mixed CASE mixed case");
+        assert_eq!(
+            remove_duplicate_words("Mixed CASE mixed case"),
+            "Mixed CASE mixed case"
+        );
     }
-    
+
     #[test]
     fn test_remove_extra_spaces() {
         assert_eq!(remove_extra_spaces("Multiple   spaces"), "Multiple spaces");
-        assert_eq!(remove_extra_spaces("  Leading and trailing  "), " Leading and trailing ");
+        assert_eq!(
+            remove_extra_spaces("  Leading and trailing  "),
+            " Leading and trailing "
+        );
         assert_eq!(remove_extra_spaces("Single"), "Single");
     }
 }

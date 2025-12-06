@@ -23,10 +23,20 @@ export interface UiSearchResult {
   [key: string]: unknown; // Allow additional properties for compatibility
 }
 
+export interface QualityVersion {
+  resolution: string; // e.g., "4K", "1080p", "720p", "SD"
+  file_size_gb: number;
+  seeders: number;
+  leechers: number;
+  magnet_link: string;
+  is_recommended?: boolean;
+}
+
 export interface UiTorrentInfo {
   seeders: number;
   size_gb: number;
   magnet_link: string;
+  qualities?: QualityVersion[]; // Available quality versions
 }
 
 export interface UiSearchRequest {

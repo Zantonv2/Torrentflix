@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   searchStore,
   setQuery,
@@ -8,6 +8,11 @@ import {
   clearSearch,
   hasResults,
   isIdle,
+  addToHistory,
+  setSuggestions,
+  clearHistory,
+  searchHistory,
+  searchSuggestions,
 } from './searchStore';
 import type { SearchState } from './searchStore';
 import type { UiSearchResult } from '../types';
@@ -15,6 +20,22 @@ import type { UiSearchResult } from '../types';
 describe('searchStore', () => {
   beforeEach(() => {
     clearSearch();
+    clearHistory();
+    // Mock localStorage
+    const localStorageMock = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    };
+    Object.defineProperty(global, 'localStorage', {
+      value: localStorageMock,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   describe('state updates', () => {
@@ -24,12 +45,16 @@ describe('searchStore', () => {
         state = s;
       });
 
-      expect(state).toEqual({
-        query: '',
-        results: [],
-        loading: false,
-        error: null,
-      });
+      expect(state?.query).toBe('');
+      expect(state?.results).toEqual([]);
+      expect(state?.loading).toBe(false);
+      expect(state?.error).toBeNull();
+      expect(state?.cache).toEqual(new Map());
+      expect(state?.cacheTimestamp).toBe(0);
+      expect(state?.scrollPosition).toBe(0);
+      expect(state?.history).toBeDefined();
+      expect(Array.isArray(state?.history)).toBe(true);
+      expect(state?.suggestions).toEqual([]);
 
       unsubscribe();
     });
@@ -112,12 +137,13 @@ describe('searchStore', () => {
       setLoading(true);
       clearSearch();
 
-      expect(state).toEqual({
-        query: '',
-        results: [],
-        loading: false,
-        error: null,
-      });
+      expect(state?.query).toBe('');
+      expect(state?.results).toEqual([]);
+      expect(state?.loading).toBe(false);
+      expect(state?.error).toBeNull();
+      expect(state?.cache).toEqual(new Map());
+      expect(state?.cacheTimestamp).toBe(0);
+      expect(state?.scrollPosition).toBe(0);
 
       unsubscribe();
     });
@@ -230,6 +256,135 @@ describe('searchStore', () => {
 
       setError(null);
       expect(isIdleValue).toBe(true);
+
+      unsubscribe();
+    });
+  });
+
+  describe('search history', () => {
+    it('should add query to history', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      addToHistory('test query');
+
+      expect(state?.history).toContain('test query');
+      unsubscribe();
+    });
+
+    it('should maintain max 10 history items', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      for (let i = 0; i < 15; i++) {
+        addToHistory(`query ${i}`);
+      }
+
+      expect(state?.history.length).toBe(10);
+      unsubscribe();
+    });
+
+    it('should move duplicate to front', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      addToHistory('first');
+      addToHistory('second');
+      addToHistory('third');
+      addToHistory('first'); // Add duplicate
+
+      expect(state?.history[0]).toBe('first');
+      expect(state?.history.length).toBe(3);
+      unsubscribe();
+    });
+
+    it('should ignore empty queries', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      addToHistory('');
+      addToHistory('   ');
+
+      expect(state?.history.length).toBe(0);
+      unsubscribe();
+    });
+
+    it('should clear history', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      addToHistory('test');
+      expect(state?.history.length).toBeGreaterThan(0);
+
+      clearHistory();
+      expect(state?.history.length).toBe(0);
+
+      unsubscribe();
+    });
+  });
+
+  describe('suggestions', () => {
+    it('should set suggestions', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      const suggestions = ['suggestion 1', 'suggestion 2'];
+      setSuggestions(suggestions);
+
+      expect(state?.suggestions).toEqual(suggestions);
+      unsubscribe();
+    });
+
+    it('should clear suggestions', () => {
+      let state: SearchState | undefined;
+      const unsubscribe = searchStore.subscribe((s) => {
+        state = s;
+      });
+
+      setSuggestions(['suggestion 1']);
+      expect(state?.suggestions.length).toBeGreaterThan(0);
+
+      setSuggestions([]);
+      expect(state?.suggestions.length).toBe(0);
+
+      unsubscribe();
+    });
+  });
+
+  describe('derived stores', () => {
+    it('searchHistory should reflect history changes', () => {
+      let historyValue: string[] = [];
+      const unsubscribe = searchHistory.subscribe((value) => {
+        historyValue = value;
+      });
+
+      addToHistory('test');
+      expect(historyValue).toContain('test');
+
+      unsubscribe();
+    });
+
+    it('searchSuggestions should reflect suggestions changes', () => {
+      let suggestionsValue: string[] = [];
+      const unsubscribe = searchSuggestions.subscribe((value) => {
+        suggestionsValue = value;
+      });
+
+      const suggestions = ['test1', 'test2'];
+      setSuggestions(suggestions);
+      expect(suggestionsValue).toEqual(suggestions);
 
       unsubscribe();
     });

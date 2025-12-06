@@ -11,6 +11,22 @@
         isBusy,
     } from "../../stores/settingsStore";
     import type { Settings } from "../../stores/settingsStore";
+    import {
+        themeStore,
+        setTheme,
+        setAccentColor,
+        getThemeColors,
+        getAccentColorValue,
+        type Theme,
+        type AccentColor,
+    } from "../../stores/themeStore";
+    import {
+        languageStore,
+        setLanguage,
+        getSupportedLanguages,
+        getLanguageName,
+        type Language,
+    } from "../../stores/languageStore";
     import Button from "../core/Button.svelte";
     import Input from "../core/Input.svelte";
     import Toast from "../core/Toast.svelte";
@@ -25,6 +41,11 @@
     let dirtyState = $state(false);
     let busyState = $state(false);
 
+    let currentTheme = $state<Theme>("dark");
+    let currentAccentColor = $state<AccentColor>("red");
+    let currentLanguage = $state<Language>("en");
+    let supportedLanguages = $state<Language[]>([]);
+
     const unsubscribeSettings = settingsStore.subscribe((value) => {
         settingsData = value.data;
         settingsErrors = value.errors;
@@ -38,12 +59,24 @@
         busyState = value;
     });
 
+    const unsubscribeTheme = themeStore.subscribe((value) => {
+        currentTheme = value.theme;
+        currentAccentColor = value.accentColor;
+    });
+
+    const unsubscribeLanguage = languageStore.subscribe((value) => {
+        currentLanguage = value.currentLanguage;
+    });
+
     onMount(() => {
         loadSettings();
+        supportedLanguages = getSupportedLanguages();
         return () => {
             unsubscribeSettings();
             unsubscribeDirty();
             unsubscribeBusy();
+            unsubscribeTheme();
+            unsubscribeLanguage();
         };
     });
 
@@ -157,9 +190,26 @@
             handleInputChange("logLevel", value);
         }
     }
+
+    function handleThemeChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value as Theme;
+        setTheme(value);
+    }
+
+    function handleAccentColorChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value as AccentColor;
+        setAccentColor(value);
+    }
+
+    async function handleLanguageChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value as Language;
+        await setLanguage(value);
+    }
 </script>
 
-<div class="flex flex-col h-full bg-netflix-dark-bg overflow-hidden">
+<div
+    class="flex flex-col h-full bg-netflix-dark-bg overflow-hidden page-transition"
+>
     {#if loading}
         <div class="flex items-center justify-center flex-1">
             <div class="text-center">
@@ -615,6 +665,192 @@
                             />
                             <span class="text-white">Режим отладки</span>
                         </label>
+                    </div>
+                </div>
+
+                <!-- UI Preferences Section -->
+                <div
+                    class="bg-netflix-card-bg border border-netflix-border rounded-lg p-6 mb-6"
+                >
+                    <h2 class="text-xl font-bold text-white mb-4">
+                        🎨 Предпочтения UI
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="block text-white text-sm font-medium mb-2"
+                                >Режим пагинации</label
+                            >
+                            <select
+                                value={settingsData.paginationMode}
+                                on:change={(e) =>
+                                    handleInputChange(
+                                        "paginationMode",
+                                        (e.target as HTMLSelectElement).value,
+                                    )}
+                                class="select-styled"
+                            >
+                                <option value="infinite"
+                                    >Бесконечная прокрутка</option
+                                >
+                                <option value="button"
+                                    >Кнопка "Загрузить еще"</option
+                                >
+                            </select>
+                            <p class="text-gray-400 text-xs mt-2">
+                                Выберите, как загружать больше фильмов
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme & Appearance Section -->
+                <div
+                    class="bg-netflix-card-bg border border-netflix-border rounded-lg p-6 mb-6"
+                >
+                    <h2 class="text-xl font-bold text-white mb-4">
+                        🎨 Тема и внешний вид
+                    </h2>
+                    <div class="space-y-6">
+                        <!-- Theme Selection -->
+                        <div>
+                            <label
+                                class="block text-white text-sm font-medium mb-2"
+                                >Тема</label
+                            >
+                            <select
+                                value={currentTheme}
+                                on:change={handleThemeChange}
+                                class="select-styled"
+                            >
+                                <option value="dark">Темная</option>
+                                <option value="oled">OLED (Очень темная)</option
+                                >
+                            </select>
+                            <p class="text-gray-400 text-xs mt-2">
+                                Выберите цветовую схему приложения
+                            </p>
+                        </div>
+
+                        <!-- Theme Preview -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div
+                                class="p-4 rounded-lg border border-netflix-border"
+                                style="background-color: {getThemeColors('dark')
+                                    .bg}"
+                            >
+                                <p class="text-white text-sm font-medium">
+                                    Темная
+                                </p>
+                                <p class="text-gray-400 text-xs mt-1">
+                                    #0f0f0f
+                                </p>
+                            </div>
+                            <div
+                                class="p-4 rounded-lg border border-netflix-border"
+                                style="background-color: {getThemeColors('oled')
+                                    .bg}"
+                            >
+                                <p class="text-white text-sm font-medium">
+                                    OLED
+                                </p>
+                                <p class="text-gray-400 text-xs mt-1">
+                                    #000000
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Accent Color Selection -->
+                        <div>
+                            <label
+                                class="block text-white text-sm font-medium mb-2"
+                                >Цвет акцента</label
+                            >
+                            <select
+                                value={currentAccentColor}
+                                on:change={handleAccentColorChange}
+                                class="select-styled"
+                            >
+                                <option value="red">Красный</option>
+                                <option value="blue">Синий</option>
+                                <option value="green">Зеленый</option>
+                                <option value="purple">Фиолетовый</option>
+                                <option value="orange">Оранжевый</option>
+                            </select>
+                            <p class="text-gray-400 text-xs mt-2">
+                                Выберите цвет для интерактивных элементов
+                            </p>
+                        </div>
+
+                        <!-- Accent Color Preview -->
+                        <div class="grid grid-cols-5 gap-2">
+                            {#each ["red", "blue", "green", "purple", "orange"] as color}
+                                <div
+                                    class="p-3 rounded-lg border-2 cursor-pointer transition-all"
+                                    style="background-color: {getAccentColorValue(
+                                        color as AccentColor,
+                                    )}; border-color: {currentAccentColor ===
+                                    color
+                                        ? '#ffffff'
+                                        : 'transparent'}"
+                                    on:click={() =>
+                                        setAccentColor(color as AccentColor)}
+                                    role="button"
+                                    tabindex="0"
+                                >
+                                    {#if currentAccentColor === color}
+                                        <p
+                                            class="text-white text-xs font-bold text-center"
+                                        >
+                                            ✓
+                                        </p>
+                                    {/if}
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Language Section -->
+                <div
+                    class="bg-netflix-card-bg border border-netflix-border rounded-lg p-6 mb-6"
+                >
+                    <h2 class="text-xl font-bold text-white mb-4">🌐 Язык</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label
+                                class="block text-white text-sm font-medium mb-2"
+                                >Язык интерфейса</label
+                            >
+                            <select
+                                value={currentLanguage}
+                                on:change={handleLanguageChange}
+                                class="select-styled"
+                            >
+                                {#each supportedLanguages as lang}
+                                    <option value={lang}>
+                                        {getLanguageName(lang)}
+                                    </option>
+                                {/each}
+                            </select>
+                            <p class="text-gray-400 text-xs mt-2">
+                                Выберите язык для интерфейса приложения
+                            </p>
+                        </div>
+
+                        <!-- Language Info -->
+                        <div
+                            class="bg-netflix-dark-bg rounded-lg p-4 border border-netflix-border"
+                        >
+                            <p class="text-white text-sm">
+                                Текущий язык: <span class="font-bold"
+                                    >{getLanguageName(currentLanguage)}</span
+                                >
+                            </p>
+                            <p class="text-gray-400 text-xs mt-2">
+                                Интерфейс обновится без перезагрузки приложения
+                            </p>
+                        </div>
                     </div>
                 </div>
 

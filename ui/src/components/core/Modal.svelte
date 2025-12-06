@@ -107,13 +107,13 @@
 
 {#if isOpen}
   <div
-    class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
     on:click={handleBackdropClick}
     role="presentation"
   >
     <div
       bind:this={modalElement}
-      class={`bg-netflix-dark rounded-lg shadow-lg max-w-md w-full mx-4 ${className}`}
+      class={`bg-netflix-dark rounded-lg shadow-2xl max-w-md w-full mx-4 animate-slide-up ${className}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
