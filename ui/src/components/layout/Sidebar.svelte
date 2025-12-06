@@ -6,6 +6,7 @@
   let currentPage: Page = "discover";
   let navButtons: HTMLButtonElement[] = [];
   let currentFocusIndex = 0;
+  let unsubscribe: (() => void) | null = null;
 
   // Navigation items - must be declared before subscribe callback
   const navItems: Array<{ id: Page; labelKey: string; icon: string }> = [
@@ -14,16 +15,6 @@
     { id: "downloads", labelKey: "nav.downloads", icon: "📥" },
     { id: "settings", labelKey: "nav.settings", icon: "⚙️" },
   ];
-
-  // Subscribe to current page
-  const unsubscribe = uiStore.subscribe((state) => {
-    currentPage = state.currentPage;
-    // Update focus index when page changes
-    const index = navItems.findIndex((item) => item.id === state.currentPage);
-    if (index !== -1) {
-      currentFocusIndex = index;
-    }
-  });
 
   function handleNavClick(page: Page) {
     setCurrentPage(page);
@@ -48,9 +39,24 @@
     }
   }
 
-  import { onDestroy } from "svelte";
+  import { onMount, onDestroy } from "svelte";
+
+  onMount(() => {
+    // Subscribe to current page
+    unsubscribe = uiStore.subscribe((state) => {
+      currentPage = state.currentPage;
+      // Update focus index when page changes
+      const index = navItems.findIndex((item) => item.id === state.currentPage);
+      if (index !== -1) {
+        currentFocusIndex = index;
+      }
+    });
+  });
+
   onDestroy(() => {
-    unsubscribe();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   });
 </script>
 

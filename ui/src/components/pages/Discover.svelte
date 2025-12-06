@@ -15,11 +15,7 @@
   // Subscribe to search store
   let results: UiSearchResult[] = [];
   let storeLoading = false;
-
-  const unsubscribe = searchStore.subscribe((state) => {
-    results = state.results;
-    storeLoading = state.loading;
-  });
+  let unsubscribe: (() => void) | null = null;
 
   async function loadFeed() {
     console.log("🎬 Discover: loadFeed() called");
@@ -110,9 +106,18 @@
 
   onMount(() => {
     console.log("🎬 Discover: Component mounted, calling loadFeed()");
+
+    // Subscribe to search store in onMount to avoid initialization issues
+    unsubscribe = searchStore.subscribe((state) => {
+      results = state.results;
+      storeLoading = state.loading;
+    });
+
     loadFeed();
     return () => {
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   });
 </script>

@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "ui:dev": "cd ui && npm run dev",
-    "ui:build": "cd ui && npm run build",
+    "ui:dev": "npm --prefix ui run dev",
+    "ui:build": "npm --prefix ui run build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
@@ -16,8 +16,5 @@
     "@tauri-apps/cli": "^2.9.4",
     "concurrently": "^8.2.2",
     "wait-on": "^7.2.0"
-  },
-  "workspaces": [
-    "ui"
-  ]
+  }
 }

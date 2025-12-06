@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [svelte()],
   build: {
-    target: 'esnext',
+    target: 'es2020',
     outDir: 'dist',
     rollupOptions: {
       output: {

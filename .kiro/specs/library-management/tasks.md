@@ -940,47 +940,75 @@
 
 - [x] 49. Implement Svelte UI components
   - [x] 49.1 Create LibraryBrowser component
-    - Display MediaItems in grid/list view
-    - Support filtering and sorting
-    - Show version counts and sizes
-    - Lazy load posters
-    - _Requirements: 4.1, 4.2, 4.5_
+    - Display MediaItems in grid/list view with toggle
+    - Support filtering and sorting with visual controls
+    - Show version counts and sizes for each item
+    - Lazy load posters as user scrolls
+    - Implement pagination for large libraries
+    - Show case-insensitive search with fuzzy matching
+    - _Requirements: 4.1, 4.2, 4.5, 20.1, 20.6_
   - [x] 49.2 Create MediaItemDetail component
-    - Display full metadata
-    - Show all FileVersions
-    - Allow editing user metadata
-    - Show playback history
-    - _Requirements: 1.4, 9.1, 25.3_
+    - Display full metadata (title, year, overview, genres, cast, director, runtime)
+    - Show all FileVersions with path, size, resolution, codec, status
+    - Allow editing user metadata (rating, watch status, notes, tags)
+    - Show playback history and last watched date
+    - Display external ratings alongside user rating
+    - Allow uploading custom artwork
+    - _Requirements: 1.4, 9.1, 9.2, 9.6, 24.1, 25.3_
   - [x] 49.3 Create VersionManager component
-    - Display version comparison
-    - Show quality scores
-    - Allow setting preferred version
+    - Display version comparison with quality scores
+    - Show resolution, codec, size, source, quality label
+    - Allow setting preferred version with star icon
     - Show duplicate/variant information
-    - _Requirements: 6.3, 6.4, 6.6_
+    - Highlight highest-scoring version as recommended
+    - _Requirements: 6.3, 6.4, 6.5, 6.6_
   - [x] 49.4 Create CleanupManager component
-    - Display cleanup candidates
-    - Show space savings estimate
-    - Allow selection and confirmation
-    - Show cleanup progress and results
-    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+    - Display cleanup candidates with reasons (duplicate, low-quality, trashed, missing)
+    - Show space savings estimate for each candidate
+    - Allow multi-select of candidates
+    - Show total space savings estimate
+    - Display cleanup progress and results
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   - [x] 49.5 Create CollectionManager component
-    - Display collections
-    - Create and edit collections
-    - Manage smart collection criteria
+    - Display all manual and smart collections
+    - Create and edit collections with name and description
+    - Visual filter builder for smart collection criteria
     - Add/remove items from collections
-    - _Requirements: 19.1, 19.2, 19.3, 19.4_
+    - Export collections as JSON or CSV
+    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.8_
   - [x] 49.6 Create StorageAnalytics component
-    - Display storage statistics
-    - Show breakdown by category
-    - Show duplicate space
-    - Show largest media items
-    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+    - Display storage statistics (total size, item count, version count, average versions)
+    - Show breakdown charts by resolution, quality label, status
+    - Show duplicate analysis with space savings
+    - Display largest media items by total size
+    - Show cleanup suggestions with space savings
+    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
   - [x] 49.7 Create JobsDashboard component
-    - Display running and completed jobs
-    - Show progress bars
-    - Allow job cancellation
-    - Display job results
-    - _Requirements: 11.1, 11.2, 11.4_
+    - Display running and completed jobs with type, status, progress
+    - Show progress bars with percentage completion
+    - Allow job cancellation with confirmation
+    - Display job results and error messages
+    - Show timestamps for job start/completion
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.6_
+  - [x] 49.8 Create SearchBar component
+    - Quick search input with case-insensitive matching
+    - Fuzzy matching for typo tolerance
+    - Dropdown with saved searches
+    - Advanced filter button
+    - _Requirements: 4.3, 20.1, 20.3, 20.6_
+  - [x] 49.9 Create AdvancedFilters component
+    - Filter controls for title, year, resolution, quality, status, tags, rating, watch status
+    - Multi-select for OR logic within filters
+    - AND logic between filters
+    - Save search functionality
+    - Clear filters button
+    - _Requirements: 4.2, 20.2_
+  - [x] 49.10 Create NotificationCenter component
+    - Display list of unread notifications
+    - Show severity levels with visual indicators
+    - Mark as read / dismiss functionality
+    - Auto-dismiss old notifications
+    - _Requirements: 26.1, 26.6, 26.7_
 
 - [x] 50. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

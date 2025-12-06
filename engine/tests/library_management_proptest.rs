@@ -4,11 +4,12 @@
 // Property 2: FileVersion completeness
 // Validates: Requirements 1.1, 1.2
 
+#![allow(dead_code, unused_imports)]
+
 use engine::library::models::*;
-use engine::jobs::WorkerManager;
-use engine::maintenance::{MaintenanceManager, RescanReport};
 use engine::database::Database;
 use proptest::prelude::*;
+use proptest::test_runner::TestCaseError;
 use chrono::Utc;
 use std::collections::HashSet;
 use std::path::PathBuf;

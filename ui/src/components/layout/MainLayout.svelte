@@ -8,11 +8,7 @@
   let sidebarCollapsed = false;
   let mobileMenuOpen = false;
   let previousFocus: HTMLElement | null = null;
-
-  // Subscribe to UI store for sidebar state
-  const unsubscribe = uiStore.subscribe((state) => {
-    sidebarCollapsed = state.sidebarCollapsed;
-  });
+  let unsubscribe: (() => void) | null = null;
 
   function handleMobileMenuToggle() {
     if (!mobileMenuOpen) {
@@ -56,6 +52,11 @@
   import { onDestroy, onMount } from "svelte";
 
   onMount(() => {
+    // Subscribe to UI store for sidebar state
+    unsubscribe = uiStore.subscribe((state) => {
+      sidebarCollapsed = state.sidebarCollapsed;
+    });
+
     document.addEventListener("keydown", handleEscapeKey);
     return () => {
       document.removeEventListener("keydown", handleEscapeKey);
@@ -63,7 +64,9 @@
   });
 
   onDestroy(() => {
-    unsubscribe();
+    if (unsubscribe) {
+      unsubscribe();
+    }
     document.removeEventListener("keydown", handleEscapeKey);
   });
 </script>

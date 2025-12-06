@@ -13,17 +13,18 @@
 
   let isInitialLoading = true;
   let currentPage: Page = "discover";
-
-  // Subscribe to current page from uiStore
-  const unsubscribe = uiStore.subscribe((state) => {
-    currentPage = state.currentPage;
-  });
+  let unsubscribe: (() => void) | null = null;
 
   onMount(async () => {
     console.log("🚀 App.svelte onMount() called");
 
     // Initialize i18n first
     initializeI18n();
+
+    // Subscribe to current page from uiStore
+    unsubscribe = uiStore.subscribe((state) => {
+      currentPage = state.currentPage;
+    });
 
     // Failsafe: if loading takes more than 10 seconds, show error
     const failsafeTimeout = setTimeout(() => {
@@ -44,7 +45,9 @@
 
   onDestroy(() => {
     // Clean up store subscription
-    unsubscribe();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   });
 </script>
 

@@ -20,6 +20,7 @@ export interface UiSearchResult {
   torrent_info: UiTorrentInfo;
   number_of_seasons?: number; // For TV shows
   number_of_episodes?: number; // For TV shows
+  [key: string]: unknown; // Allow additional properties for compatibility
 }
 
 export interface UiTorrentInfo {

@@ -33,7 +33,11 @@
         "get_commit_history",
         "get_diff",
         "git_status",
-        "git_log"
+        "git_log",
+        "git_add",
+        "git_commit",
+        "git_diff",
+        "git_show"
       ]
     },
     "sqlite": {
@@ -112,7 +116,8 @@
       "disabled": false,
       "autoApprove": [
         "list_dir",
-        "get_project_overview"
+        "get_project_overview",
+        "lsp_get_diagnostics"
       ]
     },
     "rust": {

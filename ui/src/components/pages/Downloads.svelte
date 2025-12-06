@@ -13,13 +13,7 @@
   let deleteModalOpen = false;
   let deleteTargetHash: string | null = null;
   let isDeleting = false;
-
-  // Subscribe to download store
-  const unsubscribe = downloadStore.subscribe((state) => {
-    downloads = state.active;
-    isLoading = state.loading;
-    error = state.error;
-  });
+  let unsubscribe: (() => void) | null = null;
 
   async function loadDownloads() {
     try {
@@ -93,13 +87,22 @@
   }
 
   onMount(() => {
+    // Subscribe to download store
+    unsubscribe = downloadStore.subscribe((state) => {
+      downloads = state.active;
+      isLoading = state.loading;
+      error = state.error;
+    });
+
     loadDownloads();
 
     // Start polling every 5 seconds
     pollInterval = setInterval(loadDownloads, 5000);
 
     return () => {
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
       if (pollInterval) {
         clearInterval(pollInterval);
       }
@@ -110,7 +113,9 @@
     if (pollInterval) {
       clearInterval(pollInterval);
     }
-    unsubscribe();
+    if (unsubscribe) {
+      unsubscribe();
+    }
   });
 </script>
 

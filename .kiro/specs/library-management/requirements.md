@@ -4,6 +4,22 @@
 
 The Library Management system provides comprehensive media library organization, version tracking, metadata management, and maintenance capabilities for TorrentFlix. It is designed to efficiently manage large collections of movies and TV series on HDD-based storage with modest hardware, supporting multiple file versions per media item, intelligent deduplication, integrity checking, and safe cleanup operations.
 
+## User Guide Context
+
+This requirements document is informed by the detailed user guide at `docs/LIBRARY_MANAGEMENT_DOCS/USER_GUIDE_LIBRARY_MANAGEMENT.md`, which describes the primary user workflows:
+
+1. **Library Setup**: Users add library roots and configure settings
+2. **Import Workflow**: Users import files manually, via watch folders, or using import profiles
+3. **Browsing and Discovery**: Users search, filter, and save searches with case-insensitive and fuzzy matching
+4. **Media Item Management**: Users view, edit, and tag media items with custom metadata
+5. **Version Management**: Users compare versions, set preferred versions, and identify duplicates
+6. **Collections**: Users create manual and smart collections that auto-update
+7. **Storage Management**: Users view analytics, identify duplicates, and execute cleanup
+8. **Maintenance**: Users run rescans, integrity checks, view audit logs, and monitor jobs
+9. **Playback Integration**: Users launch media players, track playback position, and manage watch status
+
+All acceptance criteria in this document are designed to support these user workflows.
+
 ## Glossary
 
 - **MediaItem**: A logical entity representing a unique movie or TV series (identified by title and year)

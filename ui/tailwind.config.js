@@ -2,17 +2,33 @@
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
-    extend: {
-      colors: {
-        netflix: {
-          black: '#141414',
-          dark: '#181818',
-          gray: '#333333',
-          light: '#757575',
-          red: '#E50914',
-          white: '#FFFFFF',
-        },
+    colors: {
+      transparent: 'transparent',
+      current: 'currentColor',
+      white: '#FFFFFF',
+      black: '#000000',
+      blue: {
+        600: '#2563eb',
       },
+      green: {
+        600: '#16a34a',
+      },
+      yellow: {
+        600: '#ca8a04',
+      },
+      gray: {
+        600: '#4b5563',
+      },
+      netflix: {
+        black: '#141414',
+        dark: '#181818',
+        gray: '#333333',
+        light: '#757575',
+        red: '#E50914',
+        white: '#FFFFFF',
+      },
+    },
+    extend: {
       fontFamily: {
         netflix: ['"Netflix Sans"', 'Helvetica Neue', 'sans-serif'],
       },
@@ -33,4 +49,7 @@ export default {
     },
   },
   plugins: [],
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
 }

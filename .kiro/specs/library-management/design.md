@@ -10,6 +10,71 @@ The design emphasizes:
 - **Safety-first operations**: Staging, atomic moves, soft-delete, audit trails
 - **Scalability**: Database-backed queries, lazy loading, incremental processing
 - **Flexibility**: Multiple versions per media, user metadata, collections, automation rules
+- **User-centric workflows**: Intuitive browsing, powerful search/filtering, collections for organization, watch folders for automation
+- **Transparency**: Audit logging, notifications, storage analytics, job monitoring
+
+## User Workflows
+
+Based on the user guide, the system supports these primary workflows:
+
+### 1. Library Setup and Configuration
+- User adds one or more Library Roots (storage directories)
+- User configures settings (trash grace period, hashing concurrency, cleanup thresholds)
+- System is ready to import media
+
+### 2. Import Workflow
+- **Manual Import**: User selects files → System stages → probes metadata → user commits
+- **Watch Folder Import**: User designates watch folder → System monitors → auto-imports on new files
+- **Import Profiles**: User creates profiles with rules → System auto-applies tags, collections, quality filters
+
+### 3. Browsing and Discovery
+- User opens library view (grid or list)
+- User searches by title (case-insensitive, fuzzy matching)
+- User applies filters (year, resolution, quality, tags, rating, watch status)
+- User saves frequently-used searches
+- System displays results with lazy-loaded posters and version counts
+
+### 4. Media Item Management
+- User views MediaItem details (metadata, all versions, ratings, watch status)
+- User edits metadata (title, year, overview, genres, cast, director)
+- User adds custom notes and tags
+- User sets watch status (unwatched, in progress, watched)
+- User sets user rating (0.0-10.0)
+- User uploads custom artwork
+
+### 5. Version Management
+- User views all FileVersions for a MediaItem
+- User compares versions (resolution, codec, size, quality score)
+- User sets preferred version (protected during cleanup)
+- User identifies duplicates and variants
+- User deletes lower-quality versions
+
+### 6. Collections
+- **Manual Collections**: User creates custom groupings (e.g., "Marvel Movies", "Favorites")
+- **Smart Collections**: User creates dynamic collections with filter criteria (e.g., "4K Movies", "Unwatched Favorites")
+- Collections auto-update as library changes
+- User exports collections as file lists
+
+### 7. Storage Management
+- User views storage analytics (total size, breakdown by resolution/quality/status)
+- User identifies duplicates and variants
+- User reviews cleanup candidates (exact duplicates, lower-quality variants, trashed files, missing records)
+- User estimates space savings
+- User executes cleanup with confirmation
+
+### 8. Maintenance
+- User runs rescan to detect new/missing files
+- User runs integrity checks to detect corruption
+- User views audit logs to trace operations
+- User monitors background jobs (rescan, hashing, cleanup)
+- User receives notifications (job completion, corruption, disk space warnings, missing files)
+
+### 9. Playback Integration
+- User selects FileVersion for playback
+- System launches configured media player
+- System records playback position for resume
+- System tracks watch status and last watched date
+- User can manually mark as watched
 
 ## Architecture
 
@@ -398,6 +463,58 @@ enum NotificationBackend {
 
 **Dependencies**:
 - notify-rust or dbus crate for Linux desktop notifications
+
+## UI/UX Design Principles
+
+Based on user workflows, the UI should implement:
+
+### 1. Library Browsing
+- **Grid View**: Poster thumbnails with title, year, version count, total size
+- **List View**: Detailed rows with sortable columns
+- **Lazy Loading**: Posters load as user scrolls
+- **Sorting**: By title, year, added date, size, version count, user rating
+- **Pagination**: Efficient loading of large libraries
+
+### 2. Search and Filtering
+- **Quick Search**: Case-insensitive title search with fuzzy matching
+- **Advanced Filters**: Year range, resolution, quality label, status, tags, rating, watch status
+- **Filter Combinations**: AND logic for multiple filters, OR logic within a filter
+- **Saved Searches**: Quick access to frequently-used search combinations
+- **Search Highlighting**: Matching terms highlighted in results
+
+### 3. Detail Panel
+- **Metadata Display**: Title, year, overview, genres, cast, director, runtime, ratings
+- **Editable Fields**: User can edit title, year, overview, genres, cast, director
+- **User Metadata**: Rating (0-10), watch status, custom notes, tags
+- **Version List**: All FileVersions with path, size, resolution, codec, status, preferred flag
+- **Version Comparison**: Side-by-side quality scores and technical details
+- **Duplicate Detection**: Exact duplicates and variants highlighted
+
+### 4. Collections
+- **Collection List**: All manual and smart collections
+- **Collection Details**: Items in collection with standard library browsing
+- **Smart Collection Editor**: Visual filter builder for criteria
+- **Collection Export**: Download as JSON or CSV
+
+### 5. Storage Analytics
+- **Statistics Dashboard**: Total size, item count, version count, average versions per media
+- **Breakdown Charts**: By resolution, quality label, status
+- **Duplicate Analysis**: Exact duplicates and variants with space savings
+- **Largest Items**: Top media items by total size
+- **Cleanup Suggestions**: Candidates with space savings estimate
+
+### 6. Jobs Dashboard
+- **Job List**: Running, completed, and failed jobs
+- **Progress Bars**: Visual progress for long-running jobs
+- **Job Details**: Type, status, progress percentage, timestamps
+- **Job Control**: Cancel running jobs
+- **Job Results**: Summary of completed jobs
+
+### 7. Notifications
+- **Notification Center**: List of unread notifications
+- **Severity Levels**: Info, warning, error, critical
+- **Auto-dismiss**: Old notifications automatically dismissed
+- **Desktop Integration**: Native notifications for important events
 
 ## Data Models
 

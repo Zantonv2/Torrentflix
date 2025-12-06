@@ -260,8 +260,8 @@ mod error_handling_and_recovery {
         
         // Verify tag appears only once
         let retrieved = manager.get_media_item(media_id).await?.expect("Media item should exist");
-        let favorite_count = retrieved.tags.iter().filter(|t| t.name == "favorite").count();
-        assert_eq!(favorite_count, 1, "Duplicate tags should not be created");
+        assert_eq!(retrieved.tags.len(), 1, "Should have exactly one tag");
+        assert_eq!(retrieved.tags[0].0, tag_id.0, "Tag ID should match");
         
         Ok(())
     }
@@ -394,7 +394,7 @@ mod concurrent_operations {
         
         // Add items to collections concurrently
         let mut handles = Vec::new();
-        for (i, collection_id) in collection_ids.iter().enumerate() {
+        for (_i, collection_id) in collection_ids.iter().enumerate() {
             let manager_clone = manager.clone();
             let media_ids_clone = media_ids.clone();
             let collection_id = *collection_id;
